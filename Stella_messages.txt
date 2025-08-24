@@ -1,0 +1,142 @@
+AI @ DSCubed Winter Program Application
+External
+
+Me <ai@dscubed.org.au>
+Sat, May 24, 9:40 PM
+to chuhancharis
+
+Dear Charis,
+
+Thank you for applying to join the AI @ DSCubed Winter Program! It’s great to connect with you. I’m Stella, the lead AI agent for our engineering team. I noticed that you didn’t provide a LinkedIn profile with your application, so I’d love to get to know you a little bit more directly.
+
+Please reply to this email so we can get our conversation started. I’m looking forward to learning more about your interests and experience, and hopefully working together if you progress to the next stage!
+
+Best regards,
+Stella
+Head Agent, AI @ DSCubed
+
+
+Charis Huang <chuhancharis.huang@student.unimelb.edu.au>
+Sun, May 25, 12:38 PM
+to me
+
+Hi Stella,
+
+Thank you for reaching out — it’s great to connect with you!
+
+Looking forward to continuing the conversation!
+
+Best regards,
+
+Charis Huang
+
+
+Get Outlook for iOS
+From: Me <ai@dscubed.org.au>
+Sent: Saturday, May 24, 2025 9:40:57 PM
+To: Charis Huang <chuhancharis@student.unimelb.edu.au>
+Subject: AI @ DSCubed Winter Program Application
+ 
+...
+
+[Message clipped]  View entire message
+
+Me <ai@dscubed.org.au>
+Sun, May 25, 12:39 PM
+to chuhancharis.huang
+
+Dear Charis,
+
+Thanks for your reply and for your enthusiasm! As part of the next stage, I have a few questions so we can get to know your experience and work out where you’d fit best in the team. Please answer each as thoroughly as you can – the more detail the better. This will help us get a full picture of your background and availability.
+
+Python Experience: How would you describe your experience with Python? What kinds of projects have you built or contributed to using Python? Which key libraries/packages are you comfortable with (especially anything related to software engineering, not just data science or machine learning)?
+University Subjects: Which university subjects have you completed that are related to programming, coding, or algorithms? (For example, EODP, FOA, FOC, or anything similar.)
+Software Engineering Experience: Do you have experience with software engineering practices like Git, version control, or design patterns? Have you built or contributed to any software projects personally or as part of a team?
+Time Commitment: For the winter program (30 June to 27 July), how many hours a week can you realistically commit? Are there any weeks in that range where you’ll be more/less available?
+Location in Winter: Which parts of the four-week program will you be based in Melbourne? Will you be here for the duration, or are there periods when you’ll be away?
+Proximity to Campus: Roughly how far do you live from the University of Melbourne campus? (This helps us plan workshops and in-person sessions.)
+Please take your time—just make sure to reply by the end of Monday, 27th of May, to complete this process.
+
+Looking forward to learning more about you and your background!
+
+
+Charis Huang <chuhancharis.huang@student.unimelb.edu.au>
+Sun, May 25, 1:51 PM
+to me
+
+Python Experience: Comfortable with writing python, starting my first project to build an AI chatbot as part of an internship. Still exploring key libraries. 
+University Subjects: Completed FOC and CS50
+Software Engineering Experience: No software engineering experience. 
+Time Commitment: Able to commit ~13+ h/week during 30 Jun → 27 Jul sprint.
+Location in Winter: Based in Melbourne for the duration.
+Proximity to Campus: 1km from campus.
+
+
+Get Outlook for iOS
+From: Me <ai@dscubed.org.au>
+Sent: Sunday, May 25, 2025 12:39:01 PM
+To: Charis Huang <chuhancharis.huang@student.unimelb.edu.au>
+Subject: Re: AI @ DSCubed Winter Program Application
+ 
+...
+
+[Message clipped]  View entire message
+
+Me <ai@dscubed.org.au>
+Sun, May 25, 1:51 PM
+to chuhancharis.huang
+
+Dear Charis,
+
+Thank you for your prompt and detailed responses! I’d like to follow up on a couple of points to make sure we understand your background as clearly as possible:
+
+Python Experience: You mentioned you’re comfortable with Python and beginning work on an AI chatbot for your internship. Could you share more about any other Python scripts, assignments, or projects you’ve done in the past—even small ones? Also, have you used tools like os, argparse, logging, pytest, or similar libraries before?
+Software Engineering Experience: Even if you haven’t done full-on software engineering, have you worked with Git or GitHub in any domain (even coursework)? Any exposure to collaborative coding, or tools/workflows beyond writing scripts on your own?
+Thanks again for your engagement so far. Once you fill in a bit more detail on those two areas, I’ll be able to move your application forward to our team!
+
+Let me know if you have any questions about the program or our work at AI @ DSCubed.
+
+
+Charis Huang <chuhancharis.huang@student.unimelb.edu.au>
+Sun, May 25, 1:55 PM
+to me
+
+Worked on FOC projects in the past, have not used tools like os, argparse, logging, pytest, or similar libraries before.
+Used GitHub during FOC project to keep track of my progress
+
+Get Outlook for iOS
+From: Me <ai@dscubed.org.au>
+Sent: Sunday, May 25, 2025 1:51:37 PM
+To: Charis Huang <chuhancharis.huang@student.unimelb.edu.au>
+Subject: Re: AI @ DSCubed Winter Program Application
+ 
+Dear Charis,
+
+...
+
+[Message clipped]  View entire message
+
+Me <ai@dscubed.org.au>
+Sun, May 25, 1:55 PM
+to chuhancharis.huang
+
+Dear Charis,
+
+Thank you for clarifying your experience, and for your openness about what you’ve done so far. That covers everything we need for this stage of the process.
+
+I’ll now compile your responses and pass them along to our team for review. You can expect to hear from us soon about the next steps. If you have any questions in the meantime—about the program, the work our team is building, or life at AI @ DSCubed—please don’t hesitate to reach out.
+
+We really appreciate your interest and the effort you’ve put into your application so far!
+
+
+AI @ DSCubed <ai@dscubed.org.au>
+6:24 PM (2 minutes ago)
+to ramohammed@student.unimelb.edu.au
+
+
+
+---------- Forwarded message ---------
+From: Me <ai@dscubed.org.au>
+Date: Sun, May 25, 2025 at 1:55 PM
+Subject: Re: AI @ DSCubed Winter Program Application
+To: <chuhancharis.huang@student.unimelb.edu.au>
