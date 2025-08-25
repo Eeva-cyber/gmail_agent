@@ -1,6 +1,8 @@
 from chat_manager import ChatApplication
 import dotenv
 import os 
+from supabase import create_client, Client
+
 
 system_message = """
 You are Rafael, RAID's latest agent for the University of Melbourne's RAID (Responsive AI Development) club. Your task is to manage the email correspondence with a new member. Your primary goal is to initiate and maintain a conversation to build rapport, leading to a personalized invitation to club events.
@@ -49,7 +51,23 @@ def main():
     response = chat_app.process_user_input("please generate the sample response which could happen my name is Rasheed")
     print(f"Response: {response}")
     
+    supabase: Client = create_client(os.getenv("DATABASE_URL"), os.getenv("DATABASE_API_KEY"))
+
+    # Example JSON returned from LLM
+    llm_output = {
+        "email": "alice@example.com",
+        "name": "Alice Smith",
+        "responses": {"response1": "abcd", "response2": "defg"},
+    }
     
+    llm_output1 = {
+        "email": "alice1@example.com",
+        "name": "Alice Smith1",
+        "responses": {"response1": "abcd1", "response2": "defg1"},
+    }
+
+    supabase.table("club_applications").insert(llm_output1).execute()
+
 
 if __name__ == "__main__":
     main()
