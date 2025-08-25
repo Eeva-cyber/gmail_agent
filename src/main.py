@@ -4,6 +4,8 @@ import os
 from supabase import create_client, Client
 from sample_response import User_1, User_2
 from LLM_Extraction import extract_member_info_llm
+import pathlib
+
 
 # System message that defines Rafael's persona and behavior as RAID's AI agent
 system_message = """
@@ -15,8 +17,8 @@ Subsequent Emails: Once a conversation is generated and you have a good understa
 Constraints: Do not ask for any more information than what is specified above. The entire response should be under 250 words and ready to be used as a final output.
 
 """
-
-dotenv.load_dotenv()
+root_dir = pathlib.Path(__file__).parent.parent
+dotenv.load_dotenv(root_dir / ".env")
 
 def read_files_content():
     """Read the content of the text files and return as a string"""
@@ -25,11 +27,12 @@ def read_files_content():
     
     for file_name in files_to_read:
         try:
-            if os.path.exists(file_name):
-                with open(file_name, 'r', encoding='utf-8') as file:
+            file_path = os.path.join("src", file_name)
+            if os.path.exists(file_path):
+                with open(file_path, 'r', encoding='utf-8') as file:
                     files_content += f"\n\n--- Content from {file_name} ---\n{file.read()}"
             else:
-                print(f"Warning: {file_name} not found in current directory")
+                print(f"Warning: {file_name} not found in src directory")
         except Exception as e:
             print(f"Error reading {file_name}: {e}")
     
@@ -37,7 +40,16 @@ def read_files_content():
     
 
 def main(): 
+    """
+    Main function that orchestrates the entire workflow:
+    1. Reads reference files and sets up the AI chat application
+    2. #TODO Use gmail API send and receive emails
+    3. #TODO Return JSON of the conversation
+    4. Uses sample responses to extract key member information
+    5. Stores data in Supabase database
+    """
     
+    # Step 1: Read reference files to enhance the AI's context
     context = read_files_content()
     enhanced_system_message = f"{system_message}\n\nBelow is the context from our reference files. Please use this information to inform your responses:{context}"
 
@@ -47,20 +59,16 @@ def main():
         endpoint=os.getenv("OPENAI_ENDPOINT"),
         system_message=enhanced_system_message
     )
-      
+    # Sample response generation
+    # response = chat_app.process_user_input("please generate the sample response which could happen")
+    # print(f"Response: {response}")
     
-
-    response = chat_app.process_user_input("please generate the sample response which could happen")
-    print(f"Response: {response}")
     
+    # Step 3 & 4: Extract key member information and store in Supabase
     supabase: Client = create_client(os.getenv("DATABASE_URL"), os.getenv("DATABASE_API_KEY"))
-
-    
     
     try:
-        supabase.table("club_applications").upsert(User_1).execute()
         supabase.table("club_applications").upsert(extract_member_info_llm(User_1,chat_app )).execute()
-        supabase.table("club_applications").upsert(User_2).execute()
         supabase.table("club_applications").upsert(extract_member_info_llm(User_2,chat_app)).execute()
         
     except Exception as e:

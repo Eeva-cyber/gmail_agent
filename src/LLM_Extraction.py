@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 import os
 from dotenv import load_dotenv
 from sample_response import User_1, User_2
+import pathlib
 
 '''
 LLM-based Information Extraction Module for RAID Club
@@ -13,7 +14,10 @@ This module uses AI to extract structured information from club member conversat
 including their major, motivation, and desired activities
 '''
 
-load_dotenv()
+# Load environment variables from .env file in root directory
+# Use absolute path to ensure .env is found regardless of current working directory
+root_dir = pathlib.Path(__file__).parent.parent
+load_dotenv(root_dir / ".env")
 
 
 def extract_member_info_llm(conversation_data: Dict[str, Any], chat_app: ChatApplication) -> Dict[str, Any]:
