@@ -1,7 +1,7 @@
 import json
 from datetime import datetime
 from typing import Dict, Any, List
-from chat_manager import LLMManager, ToolManager
+from chat_manager import ChatApplication
 from datetime import datetime, timezone
 import os
 from dotenv import load_dotenv
@@ -10,7 +10,7 @@ from sample_response import User_1, User_2
 load_dotenv()
 
 
-def extract_member_info_llm(conversation_data: Dict[str, Any], llm_manager: LLMManager) -> Dict[str, Any]:
+def extract_member_info_llm(conversation_data: Dict[str, Any], chat_app: ChatApplication) -> Dict[str, Any]:
     """
     Use LLM to extract member information from conversations.
     Only extracts information that is explicitly mentioned.
@@ -54,7 +54,7 @@ def extract_member_info_llm(conversation_data: Dict[str, Any], llm_manager: LLMM
         """
         
         # Get LLM response
-        response = llm_manager.generate_response([
+        response = chat_app.llm_manager.generate_response([
             {"role": "system", "content": "You are a precise information extractor. Only extract what is explicitly stated. Never guess or add information. Return empty lists for missing data."},
             {"role": "user", "content": extraction_prompt}
         ])
@@ -77,7 +77,8 @@ def extract_member_info_llm(conversation_data: Dict[str, Any], llm_manager: LLMM
             "name": conversation_data.get("name", ""),
             "major": extracted_info.get("major", "Not mentioned"),
             "motivation": extracted_info.get("motivation", "Not mentioned"),
-            "desired_activities": extracted_info.get("desired_activities", [])
+            "desired_activities": extracted_info.get("desired_activities", []),
+            "conversation": conversation_data.get("conversation", [])
         }
         
     except json.JSONDecodeError as e:
@@ -87,7 +88,8 @@ def extract_member_info_llm(conversation_data: Dict[str, Any], llm_manager: LLMM
             "name": conversation_data.get("name", ""),
             "major": "Not mentioned",
             "motivation": "Not mentioned", 
-            "desired_activities": []
+            "desired_activities": [],
+            "conversation": conversation_data.get("conversation", [])
         }
     except Exception as e:
         return {
@@ -96,27 +98,35 @@ def extract_member_info_llm(conversation_data: Dict[str, Any], llm_manager: LLMM
             "name": conversation_data.get("name", ""),
             "major": "Not mentioned",
             "motivation": "Not mentioned",
-            "desired_activities": []
+            "desired_activities": [],
+            "conversation": conversation_data.get("conversation", [])
         }
 
 
-# Function schema
+# Function schema for the extract_member_info_llm function
 extract_member_info_llm_schema: Dict[str, Any] = {
     "type": "function",
     "function": {
         "name": "extract_member_info_llm",
-        "description": "Extract member information from conversation data using LLM",
+        "description": "Extract key member information (major, motivation, desired activities) from conversation data using LLM",
         "parameters": {
             "type": "object",
             "properties": {
                 "conversation_data": {
                     "type": "object",
-                    "description": "Conversation data with email, name, and conversation array",
+                    "description": "Dictionary containing conversation information with email, name, and conversation array",
                     "properties": {
-                        "email": {"type": "string"},
-                        "name": {"type": "string"},
+                        "email": {
+                            "type": "string",
+                            "description": "Member's email address"
+                        },
+                        "name": {
+                            "type": "string", 
+                            "description": "Member's name"
+                        },
                         "conversation": {
                             "type": "array",
+                            "description": "Array of conversation messages between agent and user",
                             "items": {
                                 "type": "object",
                                 "properties": {
@@ -128,9 +138,18 @@ extract_member_info_llm_schema: Dict[str, Any] = {
                         }
                     },
                     "required": ["email", "name", "conversation"]
+                },
+                "chat_app": {
+                    "type": "object",
+                    "description": "ChatApplication instance for LLM interactions",
+                    "properties": {
+                        "api_key": {"type": "string"},
+                        "model": {"type": "string"},
+                        "endpoint": {"type": "string"}
+                    }
                 }
             },
-            "required": ["conversation_data"]
+            "required": ["conversation_data", "chat_app"]
         }
     }
 }

@@ -3,6 +3,7 @@ import dotenv
 import os 
 from supabase import create_client, Client
 from sample_response import User_1, User_2
+from LLM_Extraction import extract_member_info_llm
 
 
 system_message = """
@@ -58,7 +59,10 @@ def main():
     
     try:
         supabase.table("club_applications").upsert(User_1).execute()
+        supabase.table("club_applications").upsert(extract_member_info_llm(User_1,chat_app )).execute()
         supabase.table("club_applications").upsert(User_2).execute()
+        supabase.table("club_applications").upsert(extract_member_info_llm(User_2,chat_app)).execute()
+        
     except Exception as e:
         print(f"Error inserting data: {e}")
 
