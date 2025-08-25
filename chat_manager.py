@@ -2,10 +2,7 @@ from openai import OpenAI
 from dataclasses import dataclass, field
 from typing import Dict, List, Any, Optional
 import json
-from mcp.server.fastmcp import FastMCP
 
-
-mcp = FastMCP("DocumentMCP", log_level="Error")
 
 
 # Define a class for managing LLM interactions
@@ -44,20 +41,16 @@ class ToolManager:
     tools: Dict[str, Any] = field(default_factory=dict)
     tool_schemas: List[Dict[str, Any]] = field(default_factory=list)
 
-    def register_tool(self, func, func_schema=None):
+    def register_tool(self, func, func_schema):
         """Register a function as a tool."""
         name = func.__name__
         
         if func_schema is None:
-            # Assume tool is decorated with mcp.tool() and derive schema from mcp_schema
-            if hasattr(func, 'mcp_schema'):
-                schema = func.mcp_schema
-            else:
-                # Throw error if no func_schema provided and no mcp_schema found
-                raise ValueError(f"Function {name} must either have func_schema provided or be decorated with mcp.tool() (missing mcp_schema attribute)")
-        else:
-            # Use provided func_schema
-            schema = func_schema
+            # Require explicit schema - no auto-generation
+            raise ValueError(f"Function {name} requires explicit func_schema parameter")
+        
+        # Use provided func_schema
+        schema = func_schema
 
         self.tools[name] = func
         self.tool_schemas.append(schema)
@@ -120,17 +113,19 @@ class ChatContext:
 @dataclass
 class ChatApplication:
     api_key: str
+    model: str
+    endpoint: str
     system_message: str = "You are a helpful assistant."
     llm_manager: LLMManager = field(init=False)
     tool_manager: ToolManager = field(init=False)
     context: ChatContext = field(init=False)
     
     def __post_init__(self):
-        self.llm_manager = LLMManager(self.api_key)
+        self.llm_manager = LLMManager(self.api_key, self.model, self.endpoint)
         self.tool_manager = ToolManager()
         self.context = ChatContext(self.system_message)
 
-    def register_tool(self, func, func_schema=None):
+    def register_tool(self, func, func_schema):
         """Register a function as a tool."""
         self.tool_manager.register_tool(func, func_schema)
         return self
