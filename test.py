@@ -2,6 +2,7 @@ from chat_manager import ChatApplication
 import dotenv
 import os 
 from supabase import create_client, Client
+from sample_response import User_1, User_2
 
 
 system_message = """
@@ -48,25 +49,19 @@ def main():
       
     
 
-    response = chat_app.process_user_input("please generate the sample response which could happen my name is Rasheed")
+    response = chat_app.process_user_input("please generate the sample response which could happen")
     print(f"Response: {response}")
     
     supabase: Client = create_client(os.getenv("DATABASE_URL"), os.getenv("DATABASE_API_KEY"))
 
-    # Example JSON returned from LLM
-    llm_output = {
-        "email": "alice@example.com",
-        "name": "Alice Smith",
-        "responses": {"response1": "abcd", "response2": "defg"},
-    }
     
-    llm_output1 = {
-        "email": "alice1@example.com",
-        "name": "Alice Smith1",
-        "responses": {"response1": "abcd1", "response2": "defg1"},
-    }
+    
+    try:
+        supabase.table("club_applications").upsert(User_1).execute()
+        supabase.table("club_applications").upsert(User_2).execute()
+    except Exception as e:
+        print(f"Error inserting data: {e}")
 
-    supabase.table("club_applications").insert(llm_output1).execute()
 
 
 if __name__ == "__main__":

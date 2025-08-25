@@ -1,0 +1,34 @@
+# Example JSON returned from LLM
+User_1 = {
+    "email": "rasheedmohammed2006@gmail.com",
+    "name": "Rasheed M",
+    "conversation": [
+        {
+            "agent": "Hello Rasheed,\n\nWelcome to RAID! My name is Rafael, and I'm a new agent here at the University of Melbourne's Responsive AI Development club. I'm excited to have you as a new member and I'd love to learn a little more about you.\n\nI'm reaching out to get to know your interests better and to help you get the most out of your time with the club.\n\nCould you tell me a bit about what you're studying and what interests you most about AI?\n\nI'm looking forward to hearing from you.\n\nBest,\nRafael\nRAID Agent",
+            "user": "Hey I studying Science hoping to major in Computer Science. I am a second year student, and I love the automation aspect of AI, and using AI technologies we have to make our lives more easy.\n\nI am also considering pursuing a career in AI Engineering so being apart of a club which is based around it, might help me understand more about my dream career.\n\nThanks, Rasheed.",
+            "timestamp": "2024-01-15T10:30:00Z"
+        },
+        {
+            "agent": "Hello Rasheed,\n\nThanks for getting back to me, and for sharing a little about yourself! It's great to hear you're a second-year Science student considering a Computer Science major and that you're interested in AI engineering. It's also awesome that you're keen on the automation aspect of AI and how it can simplify our lives.\n\nYour interest in an AI engineering career aligns perfectly with what we do here at RAID. We're all about getting hands-on with AI development and understanding its real-world implications. Our club aims to give students like you a chance to work on practical AI projects and build confidence in AI development. We also bridge the knowledge gap between the technical side of AI and its ethical implications, which is a big part of being a responsible AI engineer.\n\nWe have a number of exciting events coming up that I think you'll find interesting.\n\nHands-on AI Workshops: These are great for getting practical experience with AI tools and projects. They're designed to help you build confidence in AI development.\n\nDiscussion and Debates: We frequently host events to discuss the responsible use of AI and its societal implications. This is a fantastic way to explore the ethical side of the field.\n\nNetworking with Professionals: We connect students with people from academia and industry who work closely in AI development. This could be a great way to learn more about a career in AI engineering.\n\nLet me know if any of these pique your interest. What are you most excited to get involved in?\n\nLooking forward to hearing from you,\nRafael",
+            "user": "I am most interested in the hands-on AI workshops, as I believe I am quite new with practical experience in making agents. I am also interested in the networking with Professionals aspect of the club as I know the importance of network in my career, and would love to know more about the industry in this new upcoming field.\n\nThanks, Rasheed",
+            "timestamp": "2024-01-15T10:32:00Z"
+        }
+    ]
+}
+
+User_2 = {
+    "email": "Fatima.Amreen@gmail.com",
+    "name": "Fatima Amreen",
+    "conversation": [
+        {
+            "agent": "Hi Fatima,\n\nWelcome to the RAID club! It's great to have you with us. I'm Rafael, a new agent for the club, and I'll be your point of contact for a little while as you get settled in.\n\nWe're all about exploring the development of responsible AI tools and discussing the ethical implications of AI. We also help students build confidence in AI development through practical projects. I'm really keen to learn about what got you interested in joining. What topics in AI are you most passionate about, and what are you hoping to get out of your time with RAID?\n\nLet me know if you have any questions. I'm looking forward to connecting with you and learning about your interests!",
+            "user": "Hi Rafael, I am interested in the ethics involved in AI and how they will be addressed in the coming future. I am a graduate of unimelb currently in the allied health field as a radiographer. I am getting increasingly concerned with how much data is entered into LLM's, how will be certain this data cannot be misused. Also I am concerned about rights around copyright, which are all being challenged with the advent of AI.\n\nWhat I am hoping to get from my time at RAID, is answers surrounding these questions and also ways I can use AI responsibly and keep my data secure.\n\nThanks so much, Fatima",
+            "timestamp": "2024-01-15T11:15:00Z"
+        },
+        {
+            "agent": "Hi Fatima,\n\nThanks so much for the reply and for sharing your thoughts—it's great to hear from you! It sounds like you're interested in the ethical and societal implications of AI, particularly concerning data privacy and copyright. These are incredibly important topics, and they're central to what we do at RAID. We have a great deal of discussion globally about these exact issues, which don't always get the attention they deserve at university.\n\nIt's fantastic that you're coming from the allied health field, as there are so many fascinating and important applications of responsible AI in medicine. We aim to bridge the knowledge gap between those who understand the technical aspects of AI and those who understand the ethical implications. By joining RAID, you will have the opportunity to participate in exciting AI projects and get involved at the forefront of AI development.\n\nUpcoming RAID Events\nBased on your interests, I'd like to invite you to our upcoming \"Ethics in AI\" workshop. It's designed to give you a deep dive into the very topics you brought up, including data privacy and copyright. You'll get to hear from both academia and industry members who closely study the responsible use of AI. This will be a great chance for you to ask your questions and discuss how to use AI responsibly and keep your data secure.\n\nWe also have a project team starting soon that will focus on building a responsible AI tool for a real-world application, with a strong focus on data security. This would be a perfect opportunity for you to gain hands-on experience and build confidence in AI development.\n\nDoes either of these sound interesting to you?\n\nBest,\n\nRafael",
+            "user": "Hi Rafael,\n\nI am interested in the 1st option, the ethics in AI workshop seems to be the better option. I am not really technical in the IT field, and do not have the time to commit into gaining hands-on experience with AI development. Option 1 where I can ask my questions to professionals seem to be the better choice for me.\n\nThanks, Fatima",
+            "timestamp": "2024-01-15T11:17:00Z"
+        }
+    ]
+}
