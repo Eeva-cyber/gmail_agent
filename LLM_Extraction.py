@@ -1,0 +1,151 @@
+import json
+from datetime import datetime
+from typing import Dict, Any, List
+from chat_manager import LLMManager, ToolManager
+from datetime import datetime, timezone
+import os
+from dotenv import load_dotenv
+from sample_response import User_1, User_2
+
+load_dotenv()
+
+
+def extract_member_info_llm(conversation_data: Dict[str, Any], llm_manager: LLMManager) -> Dict[str, Any]:
+    """
+    Use LLM to extract member information from conversations.
+    Only extracts information that is explicitly mentioned.
+    
+    Args:
+        conversation_data: Dictionary containing conversation information
+        llm_manager: Instance of LLMManager for LLM interactions
+        
+    Returns:
+        Dictionary with extracted member information or error details
+    """
+    try:
+        # Combine all messages (both agent and user) into a single context
+        all_messages: List[str] = []
+        for msg in conversation_data.get("conversation", []):
+            all_messages.append(f"Agent: {msg.get('agent', '')}")
+            all_messages.append(f"User: {msg.get('user', '')}")
+        
+        conversation_text: str = "\n\n".join(all_messages)
+        
+        # Clear extraction prompt that emphasizes not to hallucinate
+        extraction_prompt: str = f"""
+        Analyze this conversation and extract ONLY information that is explicitly mentioned.
+        
+        Conversation:
+        {conversation_text}
+        
+        Return a JSON object with these fields:
+        {{
+            "major": "their field of study (use 'Not mentioned' if not specified)",
+            "motivation": "why they want to join (use 'Not mentioned' if not specified)", 
+            "desired_activities": ["list of activities they specifically mentioned interest in"]
+        }}
+        
+        CRITICAL: 
+        - Only extract information that is clearly stated in the conversation
+        - If something is not mentioned, use 'Not mentioned' or empty list []
+        - Do NOT guess or infer information
+        - Do NOT add information that isn't in the text
+        - For desired_activities, return [] (empty list) if no activities are mentioned
+        """
+        
+        # Get LLM response
+        response = llm_manager.generate_response([
+            {"role": "system", "content": "You are a precise information extractor. Only extract what is explicitly stated. Never guess or add information. Return empty lists for missing data."},
+            {"role": "user", "content": extraction_prompt}
+        ])
+        
+        # Parse the LLM response as JSON
+        response_content = response.content.strip()
+        
+        # Remove markdown code blocks if present
+        if response_content.startswith('```json'):
+            response_content = response_content.replace('```json', '').replace('```', '').strip()
+        elif response_content.startswith('```'):
+            response_content = response_content.replace('```', '').strip()
+        
+        # Parse response
+        extracted_info: Dict[str, Any] = json.loads(response_content)
+        
+        # Return clean result
+        return {
+            "email": conversation_data.get("email", ""),
+            "name": conversation_data.get("name", ""),
+            "major": extracted_info.get("major", "Not mentioned"),
+            "motivation": extracted_info.get("motivation", "Not mentioned"),
+            "desired_activities": extracted_info.get("desired_activities", [])
+        }
+        
+    except json.JSONDecodeError as e:
+        return {
+            "error": f"Failed to parse LLM response: {str(e)}",
+            "email": conversation_data.get("email", ""),
+            "name": conversation_data.get("name", ""),
+            "major": "Not mentioned",
+            "motivation": "Not mentioned", 
+            "desired_activities": []
+        }
+    except Exception as e:
+        return {
+            "error": f"Extraction failed: {str(e)}",
+            "email": conversation_data.get("email", ""),
+            "name": conversation_data.get("name", ""),
+            "major": "Not mentioned",
+            "motivation": "Not mentioned",
+            "desired_activities": []
+        }
+
+
+# Function schema
+extract_member_info_llm_schema: Dict[str, Any] = {
+    "type": "function",
+    "function": {
+        "name": "extract_member_info_llm",
+        "description": "Extract member information from conversation data using LLM",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "conversation_data": {
+                    "type": "object",
+                    "description": "Conversation data with email, name, and conversation array",
+                    "properties": {
+                        "email": {"type": "string"},
+                        "name": {"type": "string"},
+                        "conversation": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "agent": {"type": "string"},
+                                    "user": {"type": "string"},
+                                    "timestamp": {"type": "string"}
+                                }
+                            }
+                        }
+                    },
+                    "required": ["email", "name", "conversation"]
+                }
+            },
+            "required": ["conversation_data"]
+        }
+    }
+}
+
+
+def main():
+    """
+    Example of how to use the LLM extraction function.
+    """
+    llm_manager = LLMManager(api_key=os.getenv("OPENAI_API_KEY"), model=os.getenv("OPENAI_MODEL"), endpoint=os.getenv("OPENAI_ENDPOINT"))
+    conversation_data = User_2
+    result = extract_member_info_llm(conversation_data, llm_manager)
+    print(result)
+    
+
+
+if __name__ == "__main__":
+    main()
