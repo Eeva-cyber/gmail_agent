@@ -1,49 +1,80 @@
-import os
+from chat_manager import ChatApplication
 import dotenv
-import openai
-import requests
+import os 
 from supabase import create_client, Client
+from sample_response import User_1, User_2
+from LLM_Extraction import extract_member_info_llm
 
+# System message that defines Rafael's persona and behavior as RAID's AI agent
+system_message = """
+You are Rafael, RAID's latest agent for the University of Melbourne's RAID (Responsive AI Development) club. Your task is to manage the email correspondence with a new member. Your primary goal is to initiate and maintain a conversation to build rapport, leading to a personalized invitation to club events.
+Persona & Style: Write in a friendly, smart-casual, and conversational tone, mirroring the style of the "Stella_messages.txt" conversation. The email must be easy to read and designed for a back-and-forth exchange.
+Content and Structure:
+Initial Email: Draft a welcome email to a new member. Start with a warm greeting, introduce yourself as RAID's latest agent, and ask them about their interests and major. Do not provide any event details in this initial email; the goal is to encourage a reply.
+Subsequent Emails: Once a conversation is generated and you have a good understanding of the user's interests, you will then provide information on upcoming events. The invitation to these events must be personalized based on the interests and major you have learned. The aim is to make the invitation feel tailored and highly relevant to the individual member.
+Constraints: Do not ask for any more information than what is specified above. The entire response should be under 250 words and ready to be used as a final output.
+
+"""
 
 dotenv.load_dotenv()
 
-# Configure the client for OpenRouter API (which provides access to DeepSeek models)
-client = openai.OpenAI(
-    api_key=os.getenv("OPENAI_API_KEY"),  # Use your OpenRouter API key
-    base_url="https://openrouter.ai/api/v1"  # OpenRouter's API endpoint
-)
-
-# Create a chat completion
-response = client.chat.completions.create(
-    model="deepseek/deepseek-chat-v3.1",
-    messages=[
-        {"role": "system", "content": "You are Rafael, RAID's latest agent for the University of Melbourne's RAID (Responsive AI Development) club. Your task is to manage email correspondence with new members to build rapport and provide personalized event invitations.\n\nPersona & Style: Write in a friendly, smart-casual, and conversational tone. Keep emails easy to read and designed for back-and-forth exchange.\n\nStrategy:\n1. Initial Email: Welcome new members warmly, introduce yourself as RAID's agent, and ask about their interests and major. Focus on building conversation, not providing event details yet.\n\n2. Follow-up: Once you understand their interests and major, provide personalized event information that feels tailored and highly relevant to them.\n\nConstraints: Keep responses under 250 words. Don't ask for unnecessary information beyond interests and major. Focus on building genuine rapport before moving to event invitations."},
-        {"role": "user", "content": "please generate the sample response which could happen"}
-    ],
-    temperature=0.7,
-    max_tokens=250
-)
-
-supabase: Client = create_client(os.getenv("DATABASE_URL"), os.getenv("DATABASE_API_KEY"))
-
-# Example JSON returned from LLM
-llm_output = {
-    "name": "Alice Smith",
-    "email": "alice@example.com",
-    "motivation": "I want to contribute to community projects."
-}
-
-
-
-def main():
-    print("Hello from gmail-agent!")
+def read_files_content():
+    """Read the content of the text files and return as a string"""
+    files_content = ""
+    files_to_read = ["Stella_messages.txt", "RAID_info.txt"]
     
-    # Print the response
-    print("Response content:")
-    print(response.choices[0].message.content)
+    for file_name in files_to_read:
+        try:
+            if os.path.exists(file_name):
+                with open(file_name, 'r', encoding='utf-8') as file:
+                    files_content += f"\n\n--- Content from {file_name} ---\n{file.read()}"
+            else:
+                print(f"Warning: {file_name} not found in current directory")
+        except Exception as e:
+            print(f"Error reading {file_name}: {e}")
     
-    supabase.table("club_applications").insert(llm_output).execute()
+    return files_content
+    
+
+def main(): 
+    
+    context = read_files_content()
+    enhanced_system_message = f"{system_message}\n\nBelow is the context from our reference files. Please use this information to inform your responses:{context}"
+
+    chat_app = ChatApplication(
+        api_key=os.getenv("OPENAI_API_KEY"),
+        model=os.getenv("OPENAI_MODEL"),
+        endpoint=os.getenv("OPENAI_ENDPOINT"),
+        system_message=enhanced_system_message
+    )
+      
+    
+
+    response = chat_app.process_user_input("please generate the sample response which could happen")
+    print(f"Response: {response}")
+    
+    supabase: Client = create_client(os.getenv("DATABASE_URL"), os.getenv("DATABASE_API_KEY"))
+
+    
+    
+    try:
+        supabase.table("club_applications").upsert(User_1).execute()
+        supabase.table("club_applications").upsert(extract_member_info_llm(User_1,chat_app )).execute()
+        supabase.table("club_applications").upsert(User_2).execute()
+        supabase.table("club_applications").upsert(extract_member_info_llm(User_2,chat_app)).execute()
+        
+    except Exception as e:
+        print(f"Error inserting data: {e}")
+
 
 
 if __name__ == "__main__":
     main()
+
+
+
+
+
+
+
+

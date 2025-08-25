@@ -7,20 +7,38 @@ import os
 from dotenv import load_dotenv
 from sample_response import User_1, User_2
 
+'''
+LLM-based Information Extraction Module for RAID Club
+This module uses AI to extract structured information from club member conversations
+including their major, motivation, and desired activities
+'''
+
 load_dotenv()
 
 
 def extract_member_info_llm(conversation_data: Dict[str, Any], chat_app: ChatApplication) -> Dict[str, Any]:
     """
-    Use LLM to extract member information from conversations.
-    Only extracts information that is explicitly mentioned.
+    Extract key member information from conversations using AI/LLM analysis.
+    
+    This function analyzes conversation data between club agents and potential members
+    to extract structured information about their academic background, motivations,
+    and club activity preferences. It only extracts information that is explicitly
+    mentioned to avoid hallucination.
     
     Args:
-        conversation_data: Dictionary containing conversation information
-        llm_manager: Instance of LLMManager for LLM interactions
+        conversation_data: Dictionary containing member conversation data
+            - email: Member's email address
+            - name: Member's name  
+            - conversation: Array of agent-user message exchanges
+        chat_app: ChatApplication instance with LLM capabilities
         
     Returns:
-        Dictionary with extracted member information or error details
+        Dictionary containing extracted information:
+            - email, name: Basic member details
+            - major: Field of study (or "Not mentioned")
+            - motivation: Reason for joining (or "Not mentioned")
+            - desired_activities: List of activities they're interested in
+            - conversation: Original conversation data for reference
     """
     try:
         # Combine all messages (both agent and user) into a single context
@@ -157,11 +175,13 @@ extract_member_info_llm_schema: Dict[str, Any] = {
 
 def main():
     """
-    Example of how to use the LLM extraction function.
+    Test function to test LLM extraction module.
     """
-    llm_manager = LLMManager(api_key=os.getenv("OPENAI_API_KEY"), model=os.getenv("OPENAI_MODEL"), endpoint=os.getenv("OPENAI_ENDPOINT"))
+    
+    chat_app = ChatApplication(api_key=os.getenv("OPENAI_API_KEY"), model=os.getenv("OPENAI_MODEL"), endpoint=os.getenv("OPENAI_ENDPOINT"))
+
     conversation_data = User_2
-    result = extract_member_info_llm(conversation_data, llm_manager)
+    result = extract_member_info_llm(conversation_data, chat_app)
     print(result)
     
 
