@@ -5,6 +5,8 @@ from supabase import create_client, Client
 from sample_response import User_1, User_2
 from LLM_Extraction import extract_member_info_llm
 import pathlib
+from gmail_utils import *
+import asyncio
 
 
 # System message that defines Rafael's persona and behavior as RAID's AI agent
@@ -19,6 +21,10 @@ Constraints: Do not ask for any more information than what is specified above. T
 """
 root_dir = pathlib.Path(__file__).parent.parent
 dotenv.load_dotenv(root_dir / ".env")
+
+#Initialise Gmail API
+service = authenticate_gmail() 
+
 
 def read_files_content():
     """Read the content of the text files and return as a string"""
@@ -39,7 +45,7 @@ def read_files_content():
     return files_content
     
 
-def main(): 
+async def main(): 
     """
     Main function that orchestrates the entire workflow:
     1. Reads reference files and sets up the AI chat application
@@ -59,25 +65,38 @@ def main():
         endpoint=os.getenv("OPENAI_ENDPOINT"),
         system_message=enhanced_system_message
     )
+    
+    
     # Sample response generation
-    # response = chat_app.process_user_input("please generate the sample response which could happen")
-    # print(f"Response: {response}")
+    response = chat_app.process_user_input("please generate the sample response which could happen to user Rasheedmohammed2006@gmail.com")
+    print(f"Response: {response}")
     
+    # Step 2: Use gmail API to send and receive emails 
+    email_id = send_email(service, 'me', 'rasheedmohammed2006@gmail.com', 'Test Email', response)
+    print(f"Email ID: {email_id}")
+    emails = read_email(service, 'me', email_id)
+    print(f"Emails: {emails}")
+    print("Awaiting for user response...")
+    response = await wait_for_user_response(service, email_id, 'me', 300, 10)
+
+    if response['success']: 
+        response_email = read_email(service, 'me', response['message_id'])
+        print(f"Response Email: {response_email}")
     
-    # Step 3 & 4: Extract key member information and store in Supabase
-    supabase: Client = create_client(os.getenv("DATABASE_URL"), os.getenv("DATABASE_API_KEY"))
+    # # Step 3 & 4: Extract key member information and store in Supabase
+    # supabase: Client = create_client(os.getenv("DATABASE_URL"), os.getenv("DATABASE_API_KEY"))
     
-    try:
-        supabase.table("club_applications").upsert(extract_member_info_llm(User_1,chat_app )).execute()
-        supabase.table("club_applications").upsert(extract_member_info_llm(User_2,chat_app)).execute()
+    # try:
+    #     supabase.table("club_applications").upsert(extract_member_info_llm(User_1,chat_app )).execute()
+    #     supabase.table("club_applications").upsert(extract_member_info_llm(User_2,chat_app)).execute()
         
-    except Exception as e:
-        print(f"Error inserting data: {e}")
+    # except Exception as e:
+    #     print(f"Error inserting data: {e}")
 
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
 
 
 

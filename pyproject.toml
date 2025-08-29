@@ -5,8 +5,13 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "asyncio>=4.0.0",
     "dataclasses>=0.8",
+    "datetime>=5.5",
     "dotenv>=0.9.9",
+    "google-api-python-client>=2.179.0",
+    "google-auth-httplib2>=0.2.0",
+    "google-auth-oauthlib>=1.2.2",
     "mcp[cli]>=1.13.1",
     "openai>=1.101.0",
     "requests>=2.32.5",
