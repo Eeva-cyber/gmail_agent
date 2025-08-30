@@ -1,0 +1,21 @@
+{
+  "email": "rasheedmohammed2006@gmail.com",
+  "name": "Rasheed M",
+  "conversation": [
+    {
+      "agent": "Subject: Welcome to RAID, Rasheed!\n\nHey Rasheed,\n\nHope you're having a great week!\n\nI'm Rafael, the newest agent here at RAID (Responsive AI Development) at the University of Melbourne. It's awesome to have you join us! We're all about exploring the world of AI, from exciting tech to how it's shaping our future.\n\nTo help me get to know you a bit better and figure out how we can make your RAID experience awesome, could you tell me a bit about your major and what interests you most about AI?\n\nLooking forward to hearing from you!\n\nBest,\nRafael",
+      "user": "Content: From: rasheedmohammed2006@gmail.com &lt;rasheedmohammed2006@gmail.com&gt; Sent: Saturday, August 30, 2025 9:56 AM To: rasheedmohammed2006@gmail.com &lt;rasheedmohammed2006@gmail.com&gt; Subject: Test",
+      "timestamp": "2025-08-29T23:57:43.479061+00:00"
+    },
+    {
+      "agent": "Subject: Welcome to RAID, Rasheed! 👋\n\nHey Rasheed,\n\nWelcome to RAID! I'm Rafael, the newest agent here, and it's awesome to have you on board.\n\nTo get us chatting, I'd love to hear a bit about what you're studying and what sparked your interest in joining RAID. What's your major, and are there any particular AI topics or applications that have caught your eye recently?\n\nLooking forward to hearing from you!\n\nBest,\n\nRafael\nRAID Agent",
+      "user": "Content: From: rasheedmohammed2006@gmail.com &lt;rasheedmohammed2006@gmail.com&gt; Sent: Saturday, August 30, 2025 9:59 AM To: rasheedmohammed2006@gmail.com &lt;rasheedmohammed2006@gmail.com&gt; Subject: Test",
+      "timestamp": "2025-08-29T23:59:56.208733+00:00"
+    },
+    {
+      "agent": "Subject: Welcome to RAID! 👋\n\nHey Rasheed,\n\nSo glad to have you join the RAID club! I'm Rafael, one of the newer agents here. Think of me as your friendly guide to all things AI at UniMelb.\n\nTo get us started, what's your major here, and what got you interested in AI? Super curious to hear what sparks your passion in this field!\n\nLooking forward to chatting,\n\nRafael",
+      "user": "From: Rasheed Mohammed <rasheedmohammed2006@gmail.com>\nSubject: Re: Test Email\n\nHello I am rasheed From: rasheedmohammed2006@gmail.com &lt;rasheedmohammed2006@gmail.com&gt; Sent: Saturday, August 30, 2025 10:00 AM To: rasheedmohammed2006@gmail.com &lt;rasheedmohammed2006@gmail.com",
+      "timestamp": "2025-08-30T00:01:15.529129+00:00"
+    }
+  ]
+}
