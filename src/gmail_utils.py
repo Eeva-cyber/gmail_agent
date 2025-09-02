@@ -32,8 +32,8 @@ def authenticate_gmail():
         Creates/updates 'token.pickle' file to store authentication tokens.
     """
     creds = None
-    if os.path.exists('token.pickle'):
-        with open('token.pickle', 'rb') as token:
+    if os.path.exists('token.json'):
+        with open('token.json', 'rb') as token:
             creds = pickle.load(token)
     
     if not creds or not creds.valid:
@@ -43,7 +43,7 @@ def authenticate_gmail():
             flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
             creds = flow.run_local_server(port=0)
         
-        with open('token.pickle', 'wb') as token:
+        with open('token.json', 'wb') as token:
             pickle.dump(creds, token)
     
     return build('gmail', 'v1', credentials=creds)
@@ -149,33 +149,6 @@ def read_email(service, user_id, email_id):
     except Exception as e:
         return f"Error reading email: {e}"
     
-def read_email_body(service, user_id, email_id):
-    """
-    Extract just the email body content without formatting.
-    
-    Args:
-        service: Authenticated Gmail API service object
-        user_id: Gmail user ID (usually 'me' for the authenticated user)
-        email_id: Unique identifier of the email to read
-    
-    Returns:
-        str: Just the email body content
-    """
-    try:
-        message = service.users().messages().get(userId=user_id, id=email_id, format='raw').execute()
-        msg_bytes = base64.urlsafe_b64decode(message['raw'])
-        msg = message_from_bytes(msg_bytes)
-        
-        # Get subject and sender directly from the decoded message
-        subject = msg['subject'] if msg['subject'] else 'No Subject'
-        sender = msg['from'] if msg['from'] else 'Unknown Sender'
-        
-        # Get email body from snippet
-        body = message.get('snippet', 'No content available')
-        
-        return f"Content: {body}"
-    except Exception as e:
-        return f"Error reading email: {e}"
     
 async def wait_for_user_response(service, email_id, user_id='me', timeout=300, check_interval=10):
     """
