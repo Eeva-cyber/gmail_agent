@@ -4,4 +4,4 @@ credentials.json
 .pickle
 .venv/
 
-token.pickle
+token.json
