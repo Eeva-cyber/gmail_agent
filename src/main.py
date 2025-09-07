@@ -122,9 +122,6 @@ async def main():
             
             
     
-    
-            
-    
     # # Step 3 & 4: Extract key member information and store in Supabase
     # supabase: Client = create_client(os.getenv("DATABASE_URL"), os.getenv("DATABASE_API_KEY"))
     
