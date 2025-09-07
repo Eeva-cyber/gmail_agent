@@ -59,13 +59,15 @@ async def main():
     
     # Step 1: Read reference files to enhance the AI's context
     context = read_files_content()
+    
+    # NOTE: ENABLE THIS WHEN READING FROM REFERENCE FILES
     enhanced_system_message = f"{system_message}\n\nBelow is the context from our reference files. Please use this information to inform your responses:{context}"
 
     chat_app = ChatApplication(
         api_key=os.getenv("OPENAI_API_KEY"),
         model=os.getenv("OPENAI_MODEL"),
         endpoint=os.getenv("OPENAI_ENDPOINT"),
-        system_message=enhanced_system_message
+        system_message=system_message
     )
     
     

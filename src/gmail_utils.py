@@ -48,6 +48,28 @@ def authenticate_gmail():
     
     return build('gmail', 'v1', credentials=creds)
 
+def setup_gmail_push_notifications(service, project_id, topic_name):
+    """Set up Gmail push notifications to Pub/Sub topic"""
+    
+    request_body = {
+        'topicName': f'projects/{project_id}/topics/{topic_name}',
+        'labelIds': ['INBOX'],  # Optional: specify labels to watch
+        'labelFilterAction': 'include'  # or 'exclude'
+    }
+    
+    try:
+        # Call the watch API
+        result = service.users().watch(userId='me', body=request_body).execute()
+        print(f"Watch setup successful!")
+        print(f"History ID: {result.get('historyId')}")
+        print(f"Expiration: {result.get('expiration')}")
+        return result
+    except Exception as e:
+        print(f"Error setting up watch: {e}")
+        return None
+
+
+
 def send_email(service, user_id, to_email, subject, body):
     """
     Send a simple email using the Gmail API.
