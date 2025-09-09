@@ -163,88 +163,100 @@ class GmailWorkflow:
         except Exception as e:
             print(f"Error processing message: {e}")
 
-    def workflow_manager(self, thread_id: str, step: int, incoming_message: dict) -> None:
-        """Handle workflow progression: 0->1->2->3->complete"""
-        try:
-            if step == 0:
-                self.send_reply_email(thread_id, "Testing testing - Follow-up #1")
-                self.save_workflow_state(thread_id, step=1, status='sent_followup_1')
-                print(f"Step 0->1 complete - Thread: {thread_id}")
-                
-            elif step == 1:
-                self.send_reply_email(thread_id, "Testing testing - Follow-up #2")
-                self.save_workflow_state(thread_id, step=2, status='sent_followup_2')
-                print(f"Step 1->2 complete - Thread: {thread_id}")
-                
-            elif step == 2:
-                self.send_reply_email(thread_id, "Testing testing - Follow-up #3")
-                self.save_workflow_state(thread_id, step=3, status='sent_followup_3')
-                print(f"Step 2->3 complete - Thread: {thread_id}")
-                
-            elif step == 3:
-                self.save_workflow_state(thread_id, step=4, status='completed')
-                print(f"Workflow completed - Thread: {thread_id}")
-                
-        except Exception as e:
-            print(f"Error in workflow_manager: {e}")
+    def workflow_manager(self, thread_id: str, step: int, incoming_message: dict, message_body: str = None, message_subject: str = None) -> None:
+    """Handle workflow progression: 0->1->2->3->complete"""
+    try:
+        if step == 0:
+            body = message_body or "Testing testing - Follow-up #1"
+            subject = message_subject or None
+            self.send_reply_email(thread_id, body, message_body=body, message_subject=subject)
+            self.save_workflow_state(thread_id, step=1, status='sent_followup_1')
+            print(f"Step 0->1 complete - Thread: {thread_id}")
+            
+        elif step == 1:
+            body = message_body or "Testing testing - Follow-up #2"
+            subject = message_subject or None
+            self.send_reply_email(thread_id, body, message_body=body, message_subject=subject)
+            self.save_workflow_state(thread_id, step=2, status='sent_followup_2')
+            print(f"Step 1->2 complete - Thread: {thread_id}")
+            
+        elif step == 2:
+            body = message_body or "Testing testing - Follow-up #3"
+            subject = message_subject or None
+            self.send_reply_email(thread_id, body, message_body=body, message_subject=subject)
+            self.save_workflow_state(thread_id, step=3, status='sent_followup_3')
+            print(f"Step 2->3 complete - Thread: {thread_id}")
+            
+        elif step == 3:
+            self.save_workflow_state(thread_id, step=4, status='completed')
+            print(f"Workflow completed - Thread: {thread_id}")
+            
+    except Exception as e:
+        print(f"Error in workflow_manager: {e}")
 
-    def send_reply_email(self, thread_id: str, body: str) -> None:
-        """Send reply in existing thread"""
-        try:
-            # Get thread messages
-            thread = self.service.users().threads().get(
-                userId='me',
-                id=thread_id
-            ).execute()
-            
-            # Find most recent external message to reply to
-            my_email = os.getenv("GMAIL_ADDRESS", "")
-            if not my_email:
-                profile = self.service.users().getProfile(userId='me').execute()
-                my_email = profile.get('emailAddress', '')
-            
-            latest_external_message = None
-            for message in reversed(thread['messages']):
-                headers = message['payload'].get('headers', [])
-                from_header = next((h['value'] for h in headers if h['name'].lower() == 'from'), '')
-                
-                if my_email.lower() not in from_header.lower():
-                    latest_external_message = message
-                    break
-            
-            if not latest_external_message:
-                return
-                
-            headers = latest_external_message['payload'].get('headers', [])
+def send_reply_email(self, thread_id: str, body: str, message_body: str = None, message_subject: str = None) -> None:
+    """Send reply in existing thread"""
+    try:
+        # Get thread messages
+        thread = self.service.users().threads().get(
+            userId='me',
+            id=thread_id
+        ).execute()
+        
+        # Find most recent external message to reply to
+        my_email = os.getenv("GMAIL_ADDRESS", "")
+        if not my_email:
+            profile = self.service.users().getProfile(userId='me').execute()
+            my_email = profile.get('emailAddress', '')
+        
+        latest_external_message = None
+        for message in reversed(thread['messages']):
+            headers = message['payload'].get('headers', [])
             from_header = next((h['value'] for h in headers if h['name'].lower() == 'from'), '')
-            subject_header = next((h['value'] for h in headers if h['name'].lower() == 'subject'), '')
-            message_id_header = next((h['value'] for h in headers if h['name'].lower() == 'message-id'), '')
             
-            # Prepare reply subject
+            if my_email.lower() not in from_header.lower():
+                latest_external_message = message
+                break
+        
+        if not latest_external_message:
+            return
+            
+        headers = latest_external_message['payload'].get('headers', [])
+        from_header = next((h['value'] for h in headers if h['name'].lower() == 'from'), '')
+        subject_header = next((h['value'] for h in headers if h['name'].lower() == 'subject'), '')
+        message_id_header = next((h['value'] for h in headers if h['name'].lower() == 'message-id'), '')
+        
+        # Prepare reply subject - use custom subject if provided, otherwise default behavior
+        if message_subject:
+            reply_subject = message_subject
+        else:
             reply_subject = f"Re: {subject_header}" if not subject_header.startswith('Re:') else subject_header
-            
-            # Create reply message
-            reply_message = {
-                'raw': base64.urlsafe_b64encode(
-                    f"To: {from_header}\r\n"
-                    f"Subject: {reply_subject}\r\n"
-                    f"In-Reply-To: {message_id_header}\r\n"
-                    f"References: {message_id_header}\r\n"
-                    f"Content-Type: text/plain; charset=utf-8\r\n"
-                    f"\r\n{body}".encode('utf-8')
-                ).decode(),
-                'threadId': thread_id
-            }
-            
-            # Send reply
-            self.service.users().messages().send(
-                userId='me', body=reply_message
-            ).execute()
-            
-            print(f"Reply sent - Thread: {thread_id}")
-            
-        except Exception as e:
-            print(f"Error sending reply: {e}")
+        
+        # Use custom body if provided, otherwise use the passed body parameter
+        email_body = message_body or body
+        
+        # Create reply message
+        reply_message = {
+            'raw': base64.urlsafe_b64encode(
+                f"To: {from_header}\r\n"
+                f"Subject: {reply_subject}\r\n"
+                f"In-Reply-To: {message_id_header}\r\n"
+                f"References: {message_id_header}\r\n"
+                f"Content-Type: text/plain; charset=utf-8\r\n"
+                f"\r\n{email_body}".encode('utf-8')
+            ).decode(),
+            'threadId': thread_id
+        }
+        
+        # Send reply
+        self.service.users().messages().send(
+            userId='me', body=reply_message
+        ).execute()
+        
+        print(f"Reply sent - Thread: {thread_id}")
+        
+    except Exception as e:
+        print(f"Error sending reply: {e}")
 
     def save_workflow_state(self, thread_id: str, step: int, status: str) -> None:
         """Save workflow state to Supabase"""
