@@ -73,21 +73,22 @@ CREATE INDEX IF NOT EXISTS idx_workflows_thread_id ON workflows(thread_id);
      ```bash
      gcloud services enable gmail.googleapis.com
      gcloud services enable pubsub.googleapis.com
+     ```
 
      # Allow Gmail push service account to publish to your topic:
-     gcloud pubsub topics add-iam-policy-binding projects/${PROJECT_ID}/topics/${TOPIC_NAME} \
-       --member="serviceAccount:gmail-api-push@system.gserviceaccount.com" \
-       --role="roles/pubsub.publisher"
+
+     ```bash
+     gcloud pubsub topics add-iam-policy-binding "projects/${PROJECT_ID}/topics/${TOPIC_NAME}" \ --member="serviceAccount:gmail-api-push@system.gserviceaccount.com" \ --role="roles/pubsub.publisher"
      ```
 
 5. Run
    - Orchestrator: `uv run main.py`
-   - Pub/Sub listener (awaits indefinitely): `uv run google-cloud-test.py`
+   - Pub/Sub listener (awaits indefinitely): `uv run google_cloud.py`
 
 ## Files
 
 - `main.py` — Main orchestration
-- `google-cloud-test.py` — Pub/Sub listener for Gmail push events
+- `google_cloud.py` — Pub/Sub listener for Gmail push events
 - `chat_manager.py` — LLM chat system
 - `LLM_Extraction.py` — Information extraction
 - `.env.example` — Environment template
@@ -98,4 +99,4 @@ CREATE INDEX IF NOT EXISTS idx_workflows_thread_id ON workflows(thread_id);
 - Extracts and stores member info
 - Handles multiple conversations
 - Event-driven via Gmail + Pub/Sub (listener runs indefinitely)
-- Response generation, database logging working in `main.py` with infinite event drive architecture on `google-cloud-test.py`
+- Response generation, database logging working in `main.py` with infinite event drive architecture on `google_cloud.py`

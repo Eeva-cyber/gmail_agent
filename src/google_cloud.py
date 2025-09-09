@@ -22,8 +22,8 @@ class GmailWorkflow:
         """Initialize Gmail Workflow with essential clients"""
         self.service = authenticate_gmail()
         self.client = create_client(
-            os.getenv("DATABASE_URL"), 
-            os.getenv("DATABASE_API_KEY")
+            os.getenv("DATABASE_URL",""), 
+            os.getenv("DATABASE_API_KEY","")
         )
         self.subscriber = pubsub_v1.SubscriberClient()
         self.subscription_path = self.subscriber.subscription_path(PROJECT_ID, SUBSCRIPTION_NAME)
