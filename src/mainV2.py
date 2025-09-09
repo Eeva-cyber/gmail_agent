@@ -144,7 +144,7 @@ class IntegratedWorkflow:
                 print("Stopping workflow...")
                 self.workflow.stop_listening(listener_future)
                 
-        #     # Process sample data (keep existing functionality)
+            # Process sample data (keep existing functionality)
         #     print("Processing sample data...")
         #     try:
         #         if self.chat_app is None:
@@ -156,8 +156,8 @@ class IntegratedWorkflow:
         #     except Exception as e:
         #         print(f"Error processing sample data: {e}")
                 
-        # except Exception as e:
-        #     print(f"Error in workflow execution: {e}")
+        except Exception as e:
+            print(f"Error in workflow execution: {e}")
 
 async def main():
     """
