@@ -53,9 +53,15 @@ CREATE INDEX IF NOT EXISTS idx_workflows_thread_id ON workflows(thread_id);
 
 1. Install dependencies: `uv install`
 
-2. Environment variables: copy `.env.example` → `.env`, then `source .env`
+2. **Database Setup (Required for google-cloud-test.py)**
 
-3. Google Cloud (Gmail Push + Pub/Sub)
+   - Create Supabase account at [supabase.com](https://supabase.com) or setup local PostgreSQL
+   - Run the database schema above
+   - Add to `.env`: `DATABASE_URL=your_connection_string` and `DATABASE_API_KEY=your_key`
+
+3. Environment variables: copy `.env.example` → `.env`, then `source .env`
+
+4. Google Cloud (Gmail Push + Pub/Sub)
 
    - Install gcloud SDK: see [Install the Google Cloud CLI](https://cloud.google.com/sdk/docs/install)
    - Authenticate and set project:
@@ -74,7 +80,7 @@ CREATE INDEX IF NOT EXISTS idx_workflows_thread_id ON workflows(thread_id);
        --role="roles/pubsub.publisher"
      ```
 
-4. Run
+5. Run
    - Orchestrator: `uv run main.py`
    - Pub/Sub listener (awaits indefinitely): `uv run google-cloud-test.py`
 
