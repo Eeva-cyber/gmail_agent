@@ -9,6 +9,7 @@ from gmail_utils import *
 import asyncio
 import json
 from datetime import datetime
+from google_cloud import GmailWorkflow
 
 
 # System message that defines Rafael's persona and behavior as RAID's AI agent
@@ -69,70 +70,43 @@ async def main():
         endpoint=os.getenv("OPENAI_ENDPOINT", ""),
         system_message=system_message
     )
-    
-    
+
+    user_emails = ['rasheedmohammed2006@gmail.com']
+
+
     # Sample response generation
-    response = chat_app.process_user_input("please generate the sample response which could happen to user Rasheedmohammed2006@gmail.com")
+    response: str = chat_app.process_user_input(f"please generate the sample response which could happen to user {user_emails[0]}") or ""
     print(f"Response: {response}")
     
-    # Step 2: Use gmail API to send and receive emails 
-    # Send Email
-    email_id = send_email(service, 'me', 'rasheedmohammed2006@gmail.com', 'Test Email', response)
-    print(f"Email ID: {email_id}")
+    # TODO: Use gmail API to send custom email and receive custom email responses via pub/sub
+    workflow = GmailWorkflow()
+    listener_future = workflow.start_listening()
     
-    # Await user response
-    print("Awaiting for user response...")
-    user_response = await wait_for_user_response(service, email_id, 'me', 300, 10)
-
-    if user_response['success']: 
-        response_email = read_email(service, 'me', user_response['message_id'])
-        print(f"Response Email: {response_email}")
+    
+    workflow.send_initial_email(
+            recipient=user_emails[0],
+            subject="Welcome to RAID! 👋", 
+            body=response
+        )
+    
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        workflow.stop_listening(listener_future)
+        print("Workflow stopped")
+    # TODO: Handle incoming email responses            
         
-        # Step 3: Append conversation to JSON 
-        try: 
-            # Load existing data or create new structure
-            try:
-                with open('src/actual_response.json', 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-            except:
-                # Create initial structure if file doesn't exist
-                data = {
-                    "email": "rasheedmohammed2006@gmail.com",
-                    "name": "Rasheed M",
-                    "conversation": []
-                }
-                
-            # Create new conversation entry
-            new_conversation_entry = {
-                "agent": response,  # The agent's message we sent
-                "user": response_email,  # Use the already-read email content
-                "timestamp": user_response['received_at']
-            }
-                
-            # Append to conversation array
-            data['conversation'].append(new_conversation_entry)
-            
-            # Save updated data back to file
-            with open('src/actual_response.json', 'w', encoding='utf-8') as f:
-                json.dump(data, f, indent=2, ensure_ascii=False)
-                print("Successfully appended conversation to actual_response.json")
-                
-        except Exception as e:
-            print(f"Error updating actual_response.json: {e}")
-    else:
-        print(f"No user response received: {user_response.get('error', 'Unknown error')}")
-            
-            
     
     # # Step 3 & 4: Extract key member information and store in Supabase
-    # supabase: Client = create_client(os.getenv("DATABASE_URL"), os.getenv("DATABASE_API_KEY"))
-    
-    # try:
-    #     supabase.table("club_applications").upsert(extract_member_info_llm(User_1,chat_app )).execute()
-    #     supabase.table("club_applications").upsert(extract_member_info_llm(User_2,chat_app)).execute()
+    supabase: Client = create_client(os.getenv("DATABASE_URL", ""), os.getenv("DATABASE_API_KEY", ""))
+
+    try:
+        supabase.table("club_applications").upsert(extract_member_info_llm(User_1,chat_app )).execute()
+        supabase.table("club_applications").upsert(extract_member_info_llm(User_2,chat_app)).execute()
         
-    # except Exception as e:
-    #     print(f"Error inserting data: {e}")
+    except Exception as e:
+        print(f"Error inserting data: {e}")
 
 
 
