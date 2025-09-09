@@ -94,7 +94,7 @@ class IntegratedWorkflow:
                 # Send initial email
                 thread_id = self.workflow.send_initial_email(
                     recipient=email,
-                    subject="Welcome to RAID! 👋",
+                    subject="Welcome to RAID!",
                     body=initial_response
                 )
                 
@@ -144,20 +144,20 @@ class IntegratedWorkflow:
                 print("Stopping workflow...")
                 self.workflow.stop_listening(listener_future)
                 
-            # Process sample data (keep existing functionality)
-            print("Processing sample data...")
-            try:
-                if self.chat_app is None:
-                    raise ValueError("ChatApplication is not initialized. Please ensure setup_chat_application() is called before this step.")
+        #     # Process sample data (keep existing functionality)
+        #     print("Processing sample data...")
+        #     try:
+        #         if self.chat_app is None:
+        #             raise ValueError("ChatApplication is not initialized. Please ensure setup_chat_application() is called before this step.")
                 
-                self.supabase.table("club_applications").upsert(extract_member_info_llm(User_1, self.chat_app)).execute()
-                self.supabase.table("club_applications").upsert(extract_member_info_llm(User_2, self.chat_app)).execute()
-                print("Sample data processed successfully")
-            except Exception as e:
-                print(f"Error processing sample data: {e}")
+        #         self.supabase.table("club_applications").upsert(extract_member_info_llm(User_1, self.chat_app)).execute()
+        #         self.supabase.table("club_applications").upsert(extract_member_info_llm(User_2, self.chat_app)).execute()
+        #         print("Sample data processed successfully")
+        #     except Exception as e:
+        #         print(f"Error processing sample data: {e}")
                 
-        except Exception as e:
-            print(f"Error in workflow execution: {e}")
+        # except Exception as e:
+        #     print(f"Error in workflow execution: {e}")
 
 async def main():
     """

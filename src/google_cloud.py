@@ -286,8 +286,8 @@ class GmailWorkflow:
                 print(f"Step {step}->{step+1} complete - Thread: {thread_id}")
                 
             elif step == 3:
-                self.save_workflow_state(thread_id, step=4, status='completed')
                 print(f"Workflow completed - Thread: {thread_id}")
+                self.save_workflow_state(thread_id, step=4, status='completed')
                 
         except Exception as e:
             print(f"Error in workflow_manager: {e}")
