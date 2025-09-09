@@ -64,7 +64,7 @@ class IntegratedWorkflow:
         
         return files_content
 
-    def generate_response(self, user_email: str, step: int, incoming_message: dict = None):
+    def generate_response(self, user_email: str, step: int, incoming_message: dict = {}):
         """Generate appropriate response based on workflow step"""
         if step == 0:
             # Initial welcome email
@@ -78,11 +78,13 @@ class IntegratedWorkflow:
         else:
             # Final personalized invitation
             prompt = f"Generate a personalized event invitation for {user_email} based on their interests"
-        
-        response = self.chat_app.process_user_input(prompt) 
-        return response or ""
 
-    def enhanced_workflow_manager(self, thread_id: str, step: int, incoming_message: dict = None):
+        if self.chat_app is None:
+            raise ValueError("ChatApplication is not initialized. Please ensure setup_chat_application() is called before generating a response.")
+        response: str = self.chat_app.process_user_input(prompt)
+        return response
+
+    def enhanced_workflow_manager(self, thread_id: str, step: int, incoming_message: dict = {}):
         """Enhanced workflow manager that generates AI responses"""
         try:
             # Get user email from thread
@@ -217,6 +219,9 @@ class IntegratedWorkflow:
             # Process sample data (keep existing functionality)
             print("Processing sample data...")
             try:
+                if self.chat_app is None:
+                    raise ValueError("ChatApplication is not initialized. Please ensure setup_chat_application() is called before this step.")
+                
                 self.supabase.table("club_applications").upsert(extract_member_info_llm(User_1, self.chat_app)).execute()
                 self.supabase.table("club_applications").upsert(extract_member_info_llm(User_2, self.chat_app)).execute()
                 print("Sample data processed successfully")

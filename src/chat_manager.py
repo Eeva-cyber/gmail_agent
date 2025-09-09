@@ -130,7 +130,7 @@ class ChatApplication:
         self.tool_manager.register_tool(func, func_schema)
         return self
 
-    def process_user_input(self, user_input):
+    def process_user_input(self, user_input: str) -> str:
         """Process user input and return the assistant's response."""
         # Add user message to context
         self.context.add_user_message(user_input)
@@ -175,7 +175,7 @@ class ChatApplication:
             # Add final response to context
             self.context.add_assistant_message(final_response)
 
-            return final_response.content
+            return final_response.content or ""
         else:
             # No tool calls, so return initial response
-            return response.content
+            return response.content or ""
