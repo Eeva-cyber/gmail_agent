@@ -1,339 +1,243 @@
-import base64
+from chat_manager import ChatApplication
+import dotenv
+import os 
+from supabase import create_client, Client
+from sample_response import User_1, User_2
+from LLM_Extraction import extract_member_info_llm
+import pathlib
+from gmail_utils import *
+import asyncio
 import json
-import os
 import time
 from datetime import datetime
-from typing import Dict, Optional
-from dotenv import load_dotenv
-from google.cloud import pubsub_v1
-from supabase import create_client, Client
-from gmail_utils import authenticate_gmail, setup_gmail_push_notifications
+from google_cloud import GmailWorkflow
 
-# Load environment variables
-load_dotenv()
 
-# Configuration
-PROJECT_ID = "gmail-agent-470407"
-SUBSCRIPTION_NAME = "gmail-events-sub"
-TOPIC_NAME = "gmail-events"
+# System message that defines Rafael's persona and behavior as RAID's AI agent
+system_message = """
+You are Rafael, RAID's latest agent for the University of Melbourne's RAID (Responsive AI Development) club. Your task is to manage the email correspondence with a new member. Your primary goal is to initiate and maintain a conversation to build rapport, leading to a personalized invitation to club events.
+Persona & Style: Write in a friendly, smart-casual, and conversational tone, mirroring the style of the "Stella_messages.txt" conversation. The email must be easy to read and designed for a back-and-forth exchange.
+Content and Structure:
+Initial Email: Draft a welcome email to a new member. Start with a warm greeting, introduce yourself as RAID's latest agent, and ask them about their interests and major. Do not provide any event details in this initial email; the goal is to encourage a reply.
+Subsequent Emails: Once a conversation is generated and you have a good understanding of the user's interests, you will then provide information on upcoming events. The invitation to these events must be personalized based on the interests and major you have learned. The aim is to make the invitation feel tailored and highly relevant to the individual member.
+Constraints: Do not ask for any more information than what is specified above. The entire response should be under 250 words and ready to be used as a final output.
 
-class GmailWorkflow:
+"""
+root_dir = pathlib.Path(__file__).parent.parent
+dotenv.load_dotenv(root_dir / ".env")
+
+class IntegratedWorkflow:
     def __init__(self):
-        """Initialize Gmail Workflow with essential clients"""
-        self.service = authenticate_gmail()
-        self.client = create_client(
-            os.getenv("DATABASE_URL",""), 
-            os.getenv("DATABASE_API_KEY","")
+        """Initialize the integrated workflow system"""
+        self.workflow = GmailWorkflow()
+        self.chat_app = None
+        self.supabase = create_client(os.getenv("DATABASE_URL", ""), os.getenv("DATABASE_API_KEY", ""))
+        self.active_threads = {}  # Track active conversation threads
+        
+    def setup_chat_application(self):
+        """Setup the chat application with enhanced context"""
+        context = self.read_files_content()
+        enhanced_system_message = f"{system_message}\n\nBelow is the context from our reference files. Please use this information to inform your responses:{context}"
+        
+        self.chat_app = ChatApplication(
+            api_key=os.getenv("OPENAI_API_KEY", ""),
+            model=os.getenv("OPENAI_MODEL", ""),
+            endpoint=os.getenv("OPENAI_ENDPOINT", ""),
+            system_message=enhanced_system_message
         )
-        self.subscriber = pubsub_v1.SubscriberClient()
-        self.subscription_path = self.subscriber.subscription_path(PROJECT_ID, SUBSCRIPTION_NAME)
-        self.processed_messages = set()
-        
-        # Setup Gmail push notifications
-        setup_gmail_push_notifications(self.service, PROJECT_ID, TOPIC_NAME)
-        print("Gmail workflow initialized")
 
-    def send_initial_email(self, recipient: str, subject: str, body: str) -> str:
-        """Send first email and create workflow record"""
-        message = {
-            'raw': base64.urlsafe_b64encode(
-                f"To: {recipient}\r\n"
-                f"Subject: {subject}\r\n"
-                f"Content-Type: text/plain; charset=utf-8\r\n"
-                f"\r\n{body}".encode('utf-8')
-            ).decode()
-        }
+    def read_files_content(self):
+        """Read the content of the text files and return as a string"""
+        files_content = ""
+        files_to_read = ["Stella_messages.txt", "RAID_info.txt"]
         
-        try:
-            sent_message = self.service.users().messages().send(
-                userId='me', body=message
-            ).execute()
-            
-            thread_id = sent_message['threadId']
-            self.save_workflow_state(thread_id, step=0, status='sent_initial')
-            
-            print(f"Initial email sent - Thread: {thread_id}")
-            return thread_id
-            
-        except Exception as e:
-            print(f"Error sending initial email: {e}")
-            raise
-
-    def pubsub_listener(self, event_data: bytes) -> None:
-        """Process Pub/Sub notification and fetch new messages"""
-        try:
-            notification = json.loads(event_data.decode('utf-8'))
-            history_id = notification.get('historyId')
-            
-            if not history_id:
-                return
-            
-            # Fetch messages using history API
+        for file_name in files_to_read:
             try:
-                history_response = self.service.users().history().list(
-                    userId='me',
-                    startHistoryId=str(max(1, int(history_id) - 100)),
-                    historyTypes=['messageAdded']
-                ).execute()
-            except Exception:
-                # Fallback to recent messages if history fails
-                recent_messages = self.service.users().messages().list(
-                    userId='me',
-                    maxResults=5
-                ).execute()
-                
-                if 'messages' in recent_messages:
-                    for msg in recent_messages['messages']:
-                        full_message = self.service.users().messages().get(
-                            userId='me',
-                            id=msg['id'],
-                            format='full'
-                        ).execute()
-                        
-                        # Only process recent messages (last 5 minutes)
-                        internal_date = int(full_message.get('internalDate', 0))
-                        if (time.time() * 1000 - internal_date) < 5 * 60 * 1000:
-                            self.process_incoming_message(full_message)
-                return
-            
-            # Process history response
-            if 'history' not in history_response:
-                return
-                
-            for history_item in history_response['history']:
-                if 'messagesAdded' in history_item:
-                    for message_added in history_item['messagesAdded']:
-                        message_id = message_added['message']['id']
-                        
-                        full_message = self.service.users().messages().get(
-                            userId='me',
-                            id=message_id,
-                            format='full'
-                        ).execute()
-                        
-                        self.process_incoming_message(full_message)
-                        
-        except Exception as e:
-            print(f"Error in pubsub_listener: {e}")
+                file_path = os.path.join("src", file_name)
+                if os.path.exists(file_path):
+                    with open(file_path, 'r', encoding='utf-8') as file:
+                        files_content += f"\n\n--- Content from {file_name} ---\n{file.read()}"
+                else:
+                    print(f"Warning: {file_name} not found in src directory")
+            except Exception as e:
+                print(f"Error reading {file_name}: {e}")
+        
+        return files_content
 
-    def process_incoming_message(self, message: dict) -> None:
-        """Check if message is a reply to our workflow and process it"""
-        try:
-            thread_id = message['threadId']
-            message_id = message['id']
-            
-            # Skip if already processed
-            if message_id in self.processed_messages:
-                return
-            self.processed_messages.add(message_id)
-            
-            # Extract headers
-            headers = message['payload'].get('headers', [])
-            from_header = next((h['value'] for h in headers if h['name'].lower() == 'from'), '')
-            to_header = next((h['value'] for h in headers if h['name'].lower() == 'to'), '')
-            
-            # Get our email address
-            my_email = os.getenv("GMAIL_ADDRESS", "")
-            if not my_email:
-                profile = self.service.users().getProfile(userId='me').execute()
-                my_email = profile.get('emailAddress', '')
-            
-            # Skip messages from us or to others
-            if my_email.lower() in from_header.lower():
-                return
-            if my_email.lower() not in to_header.lower():
-                return
-            if 'noreply' in from_header.lower():
-                return
-            
-            # Load workflow state
-            workflow_state = self.load_workflow_state(thread_id)
-            if not workflow_state:
-                return
-                
-            current_step = workflow_state['step']
-            
-            # Skip if workflow completed
-            if current_step >= 4:
-                return
-            
-            print(f"Processing reply - Thread: {thread_id}, Step: {current_step}")
-            self.workflow_manager(thread_id, current_step, message)
-            
-        except Exception as e:
-            print(f"Error processing message: {e}")
+    def generate_response(self, user_email: str, step: int, incoming_message: dict = None):
+        """Generate appropriate response based on workflow step"""
+        if step == 0:
+            # Initial welcome email
+            prompt = f"Generate the initial welcome email for new member {user_email}"
+        elif step == 1:
+            # First follow-up
+            prompt = f"Generate a follow-up email asking about their background and interests for {user_email}"
+        elif step == 2:
+            # Second follow-up with more engagement
+            prompt = f"Generate a more engaging follow-up email for {user_email}, building on previous conversation"
+        else:
+            # Final personalized invitation
+            prompt = f"Generate a personalized event invitation for {user_email} based on their interests"
+        
+        response = self.chat_app.process_user_input(prompt) 
+        return response or ""
 
-    def workflow_manager(self, thread_id: str, step: int, incoming_message: dict, message_body: str = None, message_subject: str = None) -> None:
-        """Handle workflow progression: 0->1->2->3->complete"""
+    def enhanced_workflow_manager(self, thread_id: str, step: int, incoming_message: dict = None):
+        """Enhanced workflow manager that generates AI responses"""
         try:
-            if step == 0:
-                body = message_body or "Testing testing - Follow-up #1"
-                subject = message_subject or None
-                self.send_reply_email(thread_id, body, message_body=body, message_subject=subject)
-                self.save_workflow_state(thread_id, step=1, status='sent_followup_1')
-                print(f"Step 0->1 complete - Thread: {thread_id}")
+            # Get user email from thread
+            user_email = self.active_threads.get(thread_id, {}).get('email', '')
+            
+            if step < 3:  # Steps 0, 1, 2 send AI-generated responses
+                ai_response = self.generate_response(user_email, step, incoming_message)
                 
-            elif step == 1:
-                body = message_body or "Testing testing - Follow-up #2"
-                subject = message_subject or None
-                self.send_reply_email(thread_id, body, message_body=body, message_subject=subject)
-                self.save_workflow_state(thread_id, step=2, status='sent_followup_2')
-                print(f"Step 1->2 complete - Thread: {thread_id}")
+                # Use the workflow manager with generated content
+                self.workflow.workflow_manager(
+                    thread_id=thread_id,
+                    step=step,
+                    incoming_message=incoming_message or {},
+                    message_body=ai_response,
+                    message_subject=""  # Let it use default subject handling
+                )
                 
-            elif step == 2:
-                body = message_body or "Testing testing - Follow-up #3"
-                subject = message_subject or None
-                self.send_reply_email(thread_id, body, message_body=body, message_subject=subject)
-                self.save_workflow_state(thread_id, step=3, status='sent_followup_3')
-                print(f"Step 2->3 complete - Thread: {thread_id}")
+                print(f"AI response sent for step {step} - Thread: {thread_id}")
                 
-            elif step == 3:
-                self.save_workflow_state(thread_id, step=4, status='completed')
-                print(f"Workflow completed - Thread: {thread_id}")
+            else:  # Step 3 - workflow completion
+                self.workflow.workflow_manager(thread_id, step, incoming_message or {})
                 
         except Exception as e:
-            print(f"Error in workflow_manager: {e}")
+            print(f"Error in enhanced_workflow_manager: {e}")
 
-    def send_reply_email(self, thread_id: str, body: str, message_body: str = None, message_subject: str = None) -> None:
-        """Send reply in existing thread"""
-        try:
-            # Get thread messages
-            thread = self.service.users().threads().get(
-                userId='me',
-                id=thread_id
-            ).execute()
-            
-            # Find most recent external message to reply to
-            my_email = os.getenv("GMAIL_ADDRESS", "")
-            if not my_email:
-                profile = self.service.users().getProfile(userId='me').execute()
-                my_email = profile.get('emailAddress', '')
-            
-            latest_external_message = None
-            for message in reversed(thread['messages']):
+    def start_conversation_flow(self, user_emails: list):
+        """Start the conversation flow for multiple users"""
+        for email in user_emails:
+            try:
+                # Generate initial AI response
+                initial_response = self.generate_response(email, 0)
+                
+                # Send initial email
+                thread_id = self.workflow.send_initial_email(
+                    recipient=email,
+                    subject="Welcome to RAID! 👋",
+                    body=initial_response
+                )
+                
+                # Track the thread
+                self.active_threads[thread_id] = {
+                    'email': email,
+                    'step': 0,
+                    'started_at': datetime.now()
+                }
+                
+                print(f"Started conversation with {email} - Thread: {thread_id}")
+                
+            except Exception as e:
+                print(f"Error starting conversation with {email}: {e}")
+
+    def setup_enhanced_pubsub_listener(self):
+        """Setup enhanced Pub/Sub listener that uses AI responses"""
+        # Override the workflow's process_incoming_message to use our enhanced manager
+        original_process_incoming = self.workflow.process_incoming_message
+        
+        def enhanced_process_incoming_message(message: dict):
+            try:
+                thread_id = message['threadId']
+                
+                # Call original processing logic for filtering and validation
+                # But replace the workflow_manager call
+                
+                # Extract headers for validation (copied from original)
                 headers = message['payload'].get('headers', [])
                 from_header = next((h['value'] for h in headers if h['name'].lower() == 'from'), '')
+                to_header = next((h['value'] for h in headers if h['name'].lower() == 'to'), '')
                 
-                if my_email.lower() not in from_header.lower():
-                    latest_external_message = message
-                    break
-            
-            if not latest_external_message:
-                return
+                my_email = os.getenv("GMAIL_ADDRESS", "")
+                if not my_email:
+                    profile = self.workflow.service.users().getProfile(userId='me').execute()
+                    my_email = profile.get('emailAddress', '')
                 
-            headers = latest_external_message['payload'].get('headers', [])
-            from_header = next((h['value'] for h in headers if h['name'].lower() == 'from'), '')
-            subject_header = next((h['value'] for h in headers if h['name'].lower() == 'subject'), '')
-            message_id_header = next((h['value'] for h in headers if h['name'].lower() == 'message-id'), '')
-            
-            # Prepare reply subject - use custom subject if provided, otherwise default behavior
-            if message_subject:
-                reply_subject = message_subject
-            else:
-                reply_subject = f"Re: {subject_header}" if not subject_header.startswith('Re:') else subject_header
-            
-            # Use custom body if provided, otherwise use the passed body parameter
-            email_body = message_body or body
-            
-            # Create reply message
-            reply_message = {
-                'raw': base64.urlsafe_b64encode(
-                    f"To: {from_header}\r\n"
-                    f"Subject: {reply_subject}\r\n"
-                    f"In-Reply-To: {message_id_header}\r\n"
-                    f"References: {message_id_header}\r\n"
-                    f"Content-Type: text/plain; charset=utf-8\r\n"
-                    f"\r\n{email_body}".encode('utf-8')
-                ).decode(),
-                'threadId': thread_id
-            }
-            
-            # Send reply
-            self.service.users().messages().send(
-                userId='me', body=reply_message
-            ).execute()
-            
-            print(f"Reply sent - Thread: {thread_id}")
-            
-        except Exception as e:
-            print(f"Error sending reply: {e}")
-
-    def save_workflow_state(self, thread_id: str, step: int, status: str) -> None:
-        """Save workflow state to Supabase"""
-        try:
-            workflow_data = {
-                'thread_id': thread_id,
-                'step': step,
-                'status': status,
-                'updated_at': datetime.now().isoformat()
-            }
-            
-            self.client.table('workflows').upsert(
-                workflow_data,
-                on_conflict='thread_id'
-            ).execute()
-            
-        except Exception as e:
-            print(f"Error saving workflow state: {e}")
-
-    def load_workflow_state(self, thread_id: str) -> Optional[Dict]:
-        """Load workflow state from Supabase"""
-        try:
-            result = self.client.table('workflows').select('*').eq('thread_id', thread_id).execute()
-            return result.data[0] if result.data else None
-        except Exception as e:
-            print(f"Error loading workflow state: {e}")
-            return None
-
-    def start_listening(self):
-        """Start Pub/Sub listener"""
-        def callback(message):
-            try:
-                self.pubsub_listener(message.data)
-                message.ack()
+                # Skip validation (same as original)
+                if my_email.lower() in from_header.lower():
+                    return
+                if my_email.lower() not in to_header.lower():
+                    return
+                if 'noreply' in from_header.lower():
+                    return
+                
+                # Load workflow state
+                workflow_state = self.workflow.load_workflow_state(thread_id)
+                if not workflow_state:
+                    return
+                    
+                current_step = workflow_state['step']
+                if current_step >= 4:
+                    return
+                
+                print(f"Processing reply with AI - Thread: {thread_id}, Step: {current_step}")
+                
+                # Use our enhanced workflow manager instead
+                self.enhanced_workflow_manager(thread_id, current_step, message)
+                
             except Exception as e:
-                print(f"Error processing Pub/Sub message: {e}")
-                message.nack()
+                print(f"Error in enhanced message processing: {e}")
         
-        flow_control = pubsub_v1.types.FlowControl(max_messages=10)
-        future = self.subscriber.subscribe(
-            self.subscription_path, 
-            callback=callback,
-            flow_control=flow_control
-        )
-        
-        print("Pub/Sub listener started")
-        return future
+        # Replace the method
+        self.workflow.process_incoming_message = enhanced_process_incoming_message
 
-    def stop_listening(self, future):
-        """Stop Pub/Sub listener"""
-        if future:
-            future.cancel()
+    async def run_workflow(self):
+        """Main workflow execution"""
+        try:
+            # Setup components
+            print("Setting up chat application...")
+            self.setup_chat_application()
+            
+            print("Setting up enhanced Pub/Sub listener...")
+            self.setup_enhanced_pubsub_listener()
+            
+            # Start Gmail listener
+            print("Starting Gmail listener...")
+            listener_future = self.workflow.start_listening()
+            
+            # Define target users
+            user_emails = ['rasheedmohammed2006@gmail.com']
+            
+            # Start conversations
+            print("Starting conversation flows...")
+            self.start_conversation_flow(user_emails)
+            
+            # Keep the workflow running
+            print("Workflow running. Press Ctrl+C to stop.")
+            try:
+                while True:
+                    await asyncio.sleep(1)
+            except KeyboardInterrupt:
+                print("Stopping workflow...")
+                self.workflow.stop_listening(listener_future)
+                
+            # Process sample data (keep existing functionality)
+            print("Processing sample data...")
+            try:
+                self.supabase.table("club_applications").upsert(extract_member_info_llm(User_1, self.chat_app)).execute()
+                self.supabase.table("club_applications").upsert(extract_member_info_llm(User_2, self.chat_app)).execute()
+                print("Sample data processed successfully")
+            except Exception as e:
+                print(f"Error processing sample data: {e}")
+                
+        except Exception as e:
+            print(f"Error in workflow execution: {e}")
 
-def main():
-    """Run the standalone workflow system (for testing)"""
-    workflow = GmailWorkflow()
+async def main():
+    """
+    Main function that orchestrates the entire integrated workflow:
+    1. Sets up AI chat application with context
+    2. Initializes Gmail workflow with Pub/Sub listening
+    3. Sends AI-generated initial emails
+    4. Waits for responses and continues conversation loop (up to 3 exchanges)
+    5. Processes sample data for database storage
+    """
     
-    # Start listener
-    listener_future = workflow.start_listening()
-    
-    # Optional: Send initial email
-    recipient = input("Enter recipient email (or press Enter to skip): ").strip()
-    if recipient:
-        workflow.send_initial_email(
-            recipient=recipient,
-            subject="Test Workflow Email", 
-            body="This is the initial email. Please reply to continue."
-        )
-    
-    print("Gmail workflow running. Press Ctrl+C to stop.")
-    
-    try:
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        workflow.stop_listening(listener_future)
-        print("Workflow stopped")
+    workflow = IntegratedWorkflow()
+    await workflow.run_workflow()
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

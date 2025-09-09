@@ -163,26 +163,26 @@ class GmailWorkflow:
         except Exception as e:
             print(f"Error processing message: {e}")
 
-    def workflow_manager(self, thread_id: str, step: int, incoming_message: dict, message_body: str = "", message_subject: str = "") -> None:
+    def workflow_manager(self, thread_id: str, step: int, incoming_message: dict, message_body: str = None, message_subject: str = None) -> None:
         """Handle workflow progression: 0->1->2->3->complete"""
         try:
             if step == 0:
                 body = message_body or "Testing testing - Follow-up #1"
-                subject = message_subject
+                subject = message_subject or None
                 self.send_reply_email(thread_id, body, message_body=body, message_subject=subject)
                 self.save_workflow_state(thread_id, step=1, status='sent_followup_1')
                 print(f"Step 0->1 complete - Thread: {thread_id}")
                 
             elif step == 1:
                 body = message_body or "Testing testing - Follow-up #2"
-                subject = message_subject
+                subject = message_subject or None
                 self.send_reply_email(thread_id, body, message_body=body, message_subject=subject)
                 self.save_workflow_state(thread_id, step=2, status='sent_followup_2')
                 print(f"Step 1->2 complete - Thread: {thread_id}")
                 
             elif step == 2:
                 body = message_body or "Testing testing - Follow-up #3"
-                subject = message_subject
+                subject = message_subject or None
                 self.send_reply_email(thread_id, body, message_body=body, message_subject=subject)
                 self.save_workflow_state(thread_id, step=3, status='sent_followup_3')
                 print(f"Step 2->3 complete - Thread: {thread_id}")
@@ -194,7 +194,7 @@ class GmailWorkflow:
         except Exception as e:
             print(f"Error in workflow_manager: {e}")
 
-    def send_reply_email(self, thread_id: str, body: str, message_body: str = "", message_subject: str = "") -> None:
+    def send_reply_email(self, thread_id: str, body: str, message_body: str = None, message_subject: str = None) -> None:
         """Send reply in existing thread"""
         try:
             # Get thread messages
@@ -311,7 +311,7 @@ class GmailWorkflow:
             future.cancel()
 
 def main():
-    """Run the workflow system"""
+    """Run the standalone workflow system (for testing)"""
     workflow = GmailWorkflow()
     
     # Start listener
