@@ -54,25 +54,19 @@ CREATE INDEX IF NOT EXISTS idx_workflows_thread_id ON workflows(thread_id);
 1. Install dependencies: `uv install`
 
 2. Environment variables: copy `.env.example` → `.env`, then `source .env`
-   - Required: `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_ENDPOINT`, `DATABASE_URL`, `DATABASE_API_KEY`
-   - Optional (if using Google Cloud locally): `PROJECT_ID`, `TOPIC_NAME`, `GOOGLE_APPLICATION_CREDENTIALS`
 
 3. Google Cloud (Gmail Push + Pub/Sub)
+
    - Install gcloud SDK: see [Install the Google Cloud CLI](https://cloud.google.com/sdk/docs/install)
    - Authenticate and set project:
      ```bash
      gcloud init
-     # or:
-     # gcloud auth application-default login
-     # gcloud config set project ${PROJECT_ID}
      ```
    - Enable services and set Pub/Sub permissions:
+
      ```bash
      gcloud services enable gmail.googleapis.com
      gcloud services enable pubsub.googleapis.com
-
-     # Ensure the topic exists:
-     gcloud pubsub topics create ${TOPIC_NAME}
 
      # Allow Gmail push service account to publish to your topic:
      gcloud pubsub topics add-iam-policy-binding projects/${PROJECT_ID}/topics/${TOPIC_NAME} \
@@ -98,4 +92,4 @@ CREATE INDEX IF NOT EXISTS idx_workflows_thread_id ON workflows(thread_id);
 - Extracts and stores member info
 - Handles multiple conversations
 - Event-driven via Gmail + Pub/Sub (listener runs indefinitely)
-- Orchestration centered on `main.py` with Pub/Sub handled by `google-cloud-test.py`
+- Response generation, database logging working in `main.py` with infinite event drive architecture on `google-cloud-test.py`
