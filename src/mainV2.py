@@ -43,7 +43,7 @@ class IntegratedWorkflow:
             api_key=os.getenv("OPENAI_API_KEY", ""),
             model=os.getenv("OPENAI_MODEL", ""),
             endpoint=os.getenv("OPENAI_ENDPOINT", ""),
-            system_message=enhanced_system_message
+            system_message=system_message
         )
 
     def read_files_content(self):
@@ -84,32 +84,6 @@ class IntegratedWorkflow:
         response: str = self.chat_app.process_user_input(prompt)
         return response
 
-    def enhanced_workflow_manager(self, thread_id: str, step: int, incoming_message: dict = {}):
-        """Enhanced workflow manager that generates AI responses"""
-        try:
-            # Get user email from thread
-            user_email = self.active_threads.get(thread_id, {}).get('email', '')
-            
-            if step < 3:  # Steps 0, 1, 2 send AI-generated responses
-                ai_response = self.generate_response(user_email, step, incoming_message)
-                
-                # Use the workflow manager with generated content
-                self.workflow.workflow_manager(
-                    thread_id=thread_id,
-                    step=step,
-                    incoming_message=incoming_message or {},
-                    message_body=ai_response,
-                    message_subject=""  # Let it use default subject handling
-                )
-                
-                print(f"AI response sent for step {step} - Thread: {thread_id}")
-                
-            else:  # Step 3 - workflow completion
-                self.workflow.workflow_manager(thread_id, step, incoming_message or {})
-                
-        except Exception as e:
-            print(f"Error in enhanced_workflow_manager: {e}")
-
     def start_conversation_flow(self, user_emails: list):
         """Start the conversation flow for multiple users"""
         for email in user_emails:
@@ -136,56 +110,6 @@ class IntegratedWorkflow:
             except Exception as e:
                 print(f"Error starting conversation with {email}: {e}")
 
-    def setup_enhanced_pubsub_listener(self):
-        """Setup enhanced Pub/Sub listener that uses AI responses"""
-        # Override the workflow's process_incoming_message to use our enhanced manager
-        original_process_incoming = self.workflow.process_incoming_message
-        
-        def enhanced_process_incoming_message(message: dict):
-            try:
-                thread_id = message['threadId']
-                
-                # Call original processing logic for filtering and validation
-                # But replace the workflow_manager call
-                
-                # Extract headers for validation (copied from original)
-                headers = message['payload'].get('headers', [])
-                from_header = next((h['value'] for h in headers if h['name'].lower() == 'from'), '')
-                to_header = next((h['value'] for h in headers if h['name'].lower() == 'to'), '')
-                
-                my_email = os.getenv("GMAIL_ADDRESS", "")
-                if not my_email:
-                    profile = self.workflow.service.users().getProfile(userId='me').execute()
-                    my_email = profile.get('emailAddress', '')
-                
-                # Skip validation (same as original)
-                if my_email.lower() in from_header.lower():
-                    return
-                if my_email.lower() not in to_header.lower():
-                    return
-                if 'noreply' in from_header.lower():
-                    return
-                
-                # Load workflow state
-                workflow_state = self.workflow.load_workflow_state(thread_id)
-                if not workflow_state:
-                    return
-                    
-                current_step = workflow_state['step']
-                if current_step >= 4:
-                    return
-                
-                print(f"Processing reply with AI - Thread: {thread_id}, Step: {current_step}")
-                
-                # Use our enhanced workflow manager instead
-                self.enhanced_workflow_manager(thread_id, current_step, message)
-                
-            except Exception as e:
-                print(f"Error in enhanced message processing: {e}")
-        
-        # Replace the method
-        self.workflow.process_incoming_message = enhanced_process_incoming_message
-
     async def run_workflow(self):
         """Main workflow execution"""
         try:
@@ -194,14 +118,18 @@ class IntegratedWorkflow:
             self.setup_chat_application()
             
             print("Setting up enhanced Pub/Sub listener...")
-            self.setup_enhanced_pubsub_listener()
+            # Setup enhanced integration with AI chat app and active threads
+            self.workflow.setup_enhanced_integration(
+                chat_app=self.chat_app,
+                active_threads=self.active_threads
+            )
             
             # Start Gmail listener
             print("Starting Gmail listener...")
             listener_future = self.workflow.start_listening()
             
             # Define target users
-            user_emails = ['rasheedmohammed2006@gmail.com']
+            user_emails = ['rasheeduddin_mohd@hotmail.com']
             
             # Start conversations
             print("Starting conversation flows...")
