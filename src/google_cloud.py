@@ -13,9 +13,9 @@ from gmail_utils import authenticate_gmail, setup_gmail_push_notifications
 load_dotenv()
 
 # Configuration
-PROJECT_ID = "gmail-agent-470407"
-SUBSCRIPTION_NAME = "gmail-events-sub"
-TOPIC_NAME = "gmail-events"
+PROJECT_ID = os.getenv("PROJECT_ID", "")
+SUBSCRIPTION_NAME = os.getenv("SUBSCRIPTION_NAME", "")
+TOPIC_NAME = os.getenv("TOPIC_NAME", "")
 
 class GmailWorkflow:
     def __init__(self):
