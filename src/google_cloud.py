@@ -346,31 +346,31 @@ class GmailWorkflow:
         """Enhanced workflow manager that supports AI-generated responses"""
         try:
             print(f"🔄 DEBUG: Workflow manager called - Thread: {thread_id}, Step: {step}")
-            
+
             # Get user email from thread (for AI integration)
             user_email = getattr(self, 'active_threads', {}).get(thread_id, {}).get('email', '')
             print(f"👤 DEBUG: User email for thread: {user_email}")
-            
+
             if step < 3:  # Steps 0, 1, 2 send responses
-                # If message_body is provided (AI-generated), use it; otherwise fallback to default
-                if message_body:
-                    body = message_body
-                    print(f"🤖 DEBUG: Using AI-generated body (length: {len(body)})")
-                else:
-                    body = f"Testing testing - Follow-up #{step + 1}"
-                    print(f"⚠️  DEBUG: Using default body: {body}")
-                
+                # Ensure AI response is available before sending email
+                if not message_body:
+                    print(f"⚠️ DEBUG: Skipping email send - AI response not ready")
+                    return
+
+                body = message_body
+                print(f"🤖 DEBUG: Using AI-generated body (length: {len(body)})")
+
                 subject = message_subject
                 print(f"📧 DEBUG: Sending reply with subject: '{subject}' (empty if default)")
-                
+
                 self.send_reply_email(thread_id, body, message_body=body, message_subject=subject)
                 self.save_workflow_state(thread_id, step=step+1, status=f'sent_followup_{step+1}')
                 print(f"✅ DEBUG: Step {step}->{step+1} complete - Thread: {thread_id}")
-                
+
             elif step == 3:
                 print(f"🏁 DEBUG: Workflow completed - Thread: {thread_id}")
                 self.save_workflow_state(thread_id, step=4, status='completed')
-                
+
         except Exception as e:
             print(f"❌ DEBUG: Error in workflow_manager: {e}")
 
