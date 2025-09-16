@@ -87,18 +87,26 @@ def send_email(service, user_id, to_email, subject, body):
     Note:
         The email is sent as plain text. For HTML emails, modify the MIMEText type.
     """
-    message = MIMEText(body)
+    # Wrap in html formatting
+    html_body = f"""
+<html>
+    <body style=\"font-family: Arial, sans-serif; font-size: 15px; color: #222;\">
+        {body}
+    </body>
+</html>
+"""
+    message = MIMEText(html_body, "html") # Change to "html" for HTML content
     message['to'] = to_email
     message['subject'] = subject
-    
+
     encoded_message = {'raw': base64.urlsafe_b64encode(message.as_bytes()).decode()}
-    
+
     try:
         sent_message = service.users().messages().send(userId=user_id, body=encoded_message).execute()
         # return f"Message sent successfully! Message Id: {sent_message['id']}"
         return sent_message['id']
     except HttpError as error:
-        return f"An error occurred: {error}"
+            return f"An error occurred: {error}"
     
     
 def list_emails(service, user_id, max_results=10):
