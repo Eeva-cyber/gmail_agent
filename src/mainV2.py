@@ -17,7 +17,7 @@ from google_cloud import GmailWorkflow
 system_message = """
 You are Rafael, RAID's latest agent for the University of Melbourne's RAID (Responsive AI Development) club. Your task is to manage the email correspondence with a new member. Your primary goal is to initiate and maintain a conversation to build rapport, leading to a personalized invitation to club events.
 Persona & Style: Write in a friendly, smart-casual, and conversational tone, mirroring the style of the "Stella_messages.txt" conversation. The email must be easy to read and designed for a back-and-forth exchange.
-Content and Structure:
+Content and Structure: 
 Initial Email: Draft a welcome email to a new member. Start with a warm greeting, introduce yourself as RAID's latest agent, and ask them about their interests and major. Do not provide any event details in this initial email; the goal is to encourage a reply.
 Subsequent Emails: Once a conversation is generated and you have a good understanding of the user's interests, you will then provide information on upcoming events. The invitation to these events must be personalized based on the interests and major you have learned. The aim is to make the invitation feel tailored and highly relevant to the individual member.
 Constraints: Do not ask for any more information than what is specified above. The entire response should be under 250 words and ready to be used as a final output.
@@ -27,6 +27,27 @@ root_dir = pathlib.Path(__file__).parent.parent
 dotenv.load_dotenv(root_dir / ".env")
 
 class IntegratedWorkflow:
+    def format_email_body(self, raw_body: str) -> str:
+        """
+        Post-processes the LLM output to format the email body with HTML tags for greeting, paragraphs, and signature.
+        Removes markdown code block wrappers (```html ... ``` or ``` ... ```).
+        Assumes the LLM output is a plain text block with paragraphs separated by double newlines or single newlines.
+        """
+        # Remove markdown code block wrappers if present
+        cleaned = raw_body.strip()
+        if cleaned.startswith('```html') and cleaned.endswith('```'):
+            cleaned = cleaned[7:-3].strip()
+        elif cleaned.startswith('```') and cleaned.endswith('```'):
+            cleaned = cleaned[3:-3].strip()
+
+        paragraphs = [p.strip() for p in cleaned.split('\n\n') if p.strip()]
+        if not paragraphs:
+            paragraphs = [cleaned]
+
+        body_paragraphs = [f"<p>{p}</p>" for p in paragraphs]
+        html_body = '\n'.join(body_paragraphs)
+        return html_body
+    
     def __init__(self):
         """Initialize the integrated workflow system"""
         self.workflow = GmailWorkflow()
@@ -68,7 +89,11 @@ class IntegratedWorkflow:
         """Generate appropriate response based on workflow step"""
         if step == 0:
             # Initial welcome email
-            prompt = f"Generate the initial welcome email for new member {user_email}"
+            prompt = (
+                f"Generate only the body of the initial welcome email for new member {user_email}. "
+                f"Do not include the subject line. The subject will be set separately. "
+                f"Format the body for use in an HTML email."
+            )
         elif step == 1:
             # First follow-up
             prompt = f"Generate a follow-up email asking about their background and interests for {user_email}"
@@ -90,23 +115,21 @@ class IntegratedWorkflow:
             try:
                 # Generate initial AI response
                 initial_response = self.generate_response(email, 0)
-                
+                # Post-process to format as HTML body
+                formatted_body = self.format_email_body(initial_response)
                 # Send initial email
                 thread_id = self.workflow.send_initial_email(
                     recipient=email,
                     subject="Welcome to RAID!",
-                    body=initial_response
+                    body=formatted_body
                 )
-                
                 # Track the thread
                 self.active_threads[thread_id] = {
                     'email': email,
                     'step': 0,
                     'started_at': datetime.now()
                 }
-                
                 print(f"Started conversation with {email} - Thread: {thread_id}")
-                
             except Exception as e:
                 print(f"Error starting conversation with {email}: {e}")
 
@@ -129,7 +152,7 @@ class IntegratedWorkflow:
             listener_future = self.workflow.start_listening()
             
             # Define target users
-            user_emails = ['rasheeduddin_mohd@hotmail.com']
+            user_emails = [os.getenv("RECIPIENT_TEST_EMAIL", "")]
             
             # Start conversations
             print("Starting conversation flows...")
