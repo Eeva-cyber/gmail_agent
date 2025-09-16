@@ -78,7 +78,10 @@ CREATE INDEX IF NOT EXISTS idx_workflows_thread_id ON workflows(thread_id);
      # Allow Gmail push service account to publish to your topic:
 
      ```bash
-     gcloud pubsub topics add-iam-policy-binding "projects/${PROJECT_ID}/topics/${TOPIC_NAME}" \ --member="serviceAccount:gmail-api-push@system.gserviceaccount.com" \ --role="roles/pubsub.publisher"
+     gcloud pubsub topics add-iam-policy-binding ${TOPIC_NAME} \
+     --member="serviceAccount:gmail-api-push@system.gserviceaccount.com" \
+     --role="roles/pubsub.publisher" \
+     --project=${PROJECT_ID}
      ```
 
 5. Run
