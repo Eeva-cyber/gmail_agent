@@ -13,9 +13,9 @@ from gmail_utils import authenticate_gmail, setup_gmail_push_notifications
 load_dotenv()
 
 # Configuration
-PROJECT_ID = "gmail-agent-470407"
-SUBSCRIPTION_NAME = "gmail-events-sub"
-TOPIC_NAME = "gmail-events"
+PROJECT_ID = os.getenv("PROJECT_ID", "")
+SUBSCRIPTION_NAME = os.getenv("SUBSCRIPTION_NAME", "")
+TOPIC_NAME = os.getenv("TOPIC_NAME", "")
 
 class GmailWorkflow:
     def __init__(self):
@@ -35,12 +35,20 @@ class GmailWorkflow:
 
     def send_initial_email(self, recipient: str, subject: str, body: str) -> str:
         """Send first email and create workflow record"""
+        # Use HTML content type and wrap body in HTML template for better formatting
+        html_body = f"""
+<html>
+  <body style=\"font-family: Arial, sans-serif; font-size: 15px; color: #222;\">
+    {body}
+  </body>
+</html>
+"""
         message = {
             'raw': base64.urlsafe_b64encode(
                 f"To: {recipient}\r\n"
                 f"Subject: {subject}\r\n"
-                f"Content-Type: text/plain; charset=utf-8\r\n"
-                f"\r\n{body}".encode('utf-8')
+                f"Content-Type: text/html; charset=utf-8\r\n" #text/plain to text/html
+                f"\r\n{html_body}".encode('utf-8')
             ).decode()
         }
         
@@ -367,66 +375,80 @@ class GmailWorkflow:
             print(f"❌ DEBUG: Error in workflow_manager: {e}")
 
     def send_reply_email(self, thread_id: str, body: str, message_body: str = "", message_subject: str = "") -> None:
-        """Send reply in existing thread"""
+        """Send reply in existing thread using HTML formatting and paragraph breaks like initial email"""
         try:
             # Get thread messages
             thread = self.service.users().threads().get(
                 userId='me',
                 id=thread_id
             ).execute()
-            
+
             # Find most recent external message to reply to
             my_email = os.getenv("GMAIL_ADDRESS", "")
             if not my_email:
                 profile = self.service.users().getProfile(userId='me').execute()
                 my_email = profile.get('emailAddress', '')
-            
+
             latest_external_message = None
             for message in reversed(thread['messages']):
                 headers = message['payload'].get('headers', [])
                 from_header = next((h['value'] for h in headers if h['name'].lower() == 'from'), '')
-                
                 if my_email.lower() not in from_header.lower():
                     latest_external_message = message
                     break
-            
+
             if not latest_external_message:
                 return
-                
+
             headers = latest_external_message['payload'].get('headers', [])
             from_header = next((h['value'] for h in headers if h['name'].lower() == 'from'), '')
             subject_header = next((h['value'] for h in headers if h['name'].lower() == 'subject'), '')
             message_id_header = next((h['value'] for h in headers if h['name'].lower() == 'message-id'), '')
-            
+
             # Prepare reply subject - use custom subject if provided, otherwise default behavior
             if message_subject:
                 reply_subject = message_subject
             else:
                 reply_subject = f"Re: {subject_header}" if not subject_header.startswith('Re:') else subject_header
-            
+
             # Use custom body if provided, otherwise use the passed body parameter
             email_body = message_body or body
-            
-            # Create reply message
+
+            # --- Format reply body with HTML paragraph breaks (like initial email) ---
+            paragraphs = [p.strip() for p in email_body.strip().split('\n\n') if p.strip()]
+            if not paragraphs:
+                paragraphs = [email_body.strip()]
+            body_paragraphs = [f"<p>{p}</p>" for p in paragraphs]
+            formatted_html_body = '\n'.join(body_paragraphs)
+
+            html_body = f"""
+<html>
+  <body style=\"font-family: Arial, sans-serif; font-size: 15px; color: #222;\">
+    {formatted_html_body}
+  </body>
+</html>
+"""
+
+            # Create reply message with HTML content type
             reply_message = {
                 'raw': base64.urlsafe_b64encode(
                     f"To: {from_header}\r\n"
                     f"Subject: {reply_subject}\r\n"
                     f"In-Reply-To: {message_id_header}\r\n"
                     f"References: {message_id_header}\r\n"
-                    f"Content-Type: text/plain; charset=utf-8\r\n"
-                    f"\r\n{email_body}".encode('utf-8')
+                    f"Content-Type: text/html; charset=utf-8\r\n" #text/plain to text/html
+                    f"\r\n{html_body}".encode('utf-8')
                 ).decode(),
                 'threadId': thread_id
             }
-            
+
             # Send reply
             self.service.users().messages().send(
                 userId='me', body=reply_message
             ).execute()
-            
+
             print(f"Reply sent - Thread: {thread_id}")
-            
+
         except Exception as e:
             print(f"Error sending reply: {e}")
 
