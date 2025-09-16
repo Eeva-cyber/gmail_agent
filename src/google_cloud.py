@@ -163,11 +163,8 @@ class GmailWorkflow:
                 thread_id = message['threadId']
                 message_id = message['id']
                 
-                print(f"🔍 DEBUG: Processing message {message_id} in thread {thread_id}")
-                
                 # Skip if already processed
                 if message_id in self.processed_messages:
-                    print(f"⚠️  DEBUG: Message {message_id} already processed, skipping")
                     return
                 self.processed_messages.add(message_id)
                 
@@ -177,53 +174,36 @@ class GmailWorkflow:
                 to_header = next((h['value'] for h in headers if h['name'].lower() == 'to'), '')
                 subject_header = next((h['value'] for h in headers if h['name'].lower() == 'subject'), '')
                 
-                print(f"📧 DEBUG: Email Headers:")
-                print(f"   From: {from_header}")
-                print(f"   To: {to_header}")
-                print(f"   Subject: {subject_header}")
-                
                 # Extract email body for debugging
                 email_body = self.extract_email_body(message)
-                print(f"📝 DEBUG: Email Body (first 200 chars): {email_body[:200]}...")
                 
                 my_email = os.getenv("GMAIL_ADDRESS", "")
                 if not my_email:
                     profile = self.service.users().getProfile(userId='me').execute()
                     my_email = profile.get('emailAddress', '')
                 
-                print(f"👤 DEBUG: My email: {my_email}")
-                
                 # Skip validation (same as original)
                 if my_email.lower() in from_header.lower():
-                    print(f"⚠️  DEBUG: Skipping - message from ourselves")
                     return
                 if my_email.lower() not in to_header.lower():
-                    print(f"⚠️  DEBUG: Skipping - message not to us")
                     return
                 if 'noreply' in from_header.lower():
-                    print(f"⚠️  DEBUG: Skipping - noreply message")
                     return
                 
                 # Load workflow state
                 workflow_state = self.load_workflow_state(thread_id)
                 if not workflow_state:
-                    print(f"⚠️  DEBUG: No workflow state found for thread {thread_id}")
                     return
                     
                 current_step = workflow_state['step']
                 if current_step >= 4:
-                    print(f"⚠️  DEBUG: Workflow already completed (step {current_step})")
                     return
-                
-                print(f"🔄 DEBUG: Processing reply - Thread: {thread_id}, Step: {current_step}")
                 
                 # Generate AI response if chat app is available
                 if hasattr(self, 'chat_app') and self.chat_app and hasattr(self, 'active_threads'):
                     user_email = self.active_threads.get(thread_id, {}).get('email', '')
                     if user_email:
                         try:
-                            print(f"🤖 DEBUG: Generating AI response for {user_email} at step {current_step}")
-                            
                             # Enhanced prompt with email content
                             base_prompts = {
                                 0: f"The user {user_email} has replied to our initial welcome email. Their response was: '{email_body[:500]}...' Generate a follow-up email asking about their background and interests, acknowledging their previous response.",
@@ -233,28 +213,20 @@ class GmailWorkflow:
                             }
                             
                             prompt = base_prompts.get(current_step, f"Generate a follow-up for {user_email}")
-                            print(f"🎯 DEBUG: AI Prompt: {prompt[:200]}...")
                             
                             ai_response = self.chat_app.process_user_input(prompt)
-                            print(f"✅ DEBUG: AI Response generated (length: {len(ai_response)})")
-                            print(f"📤 DEBUG: AI Response preview: {ai_response[:200]}...")
                             
                             self.workflow_manager(thread_id, current_step, message, message_body=ai_response)
                             return
                         except Exception as e:
-                            print(f"❌ DEBUG: Error generating AI response: {e}")
                             # Fall back to default workflow
-                    else:
-                        print(f"⚠️  DEBUG: No user email found for thread {thread_id}")
-                else:
-                    print(f"⚠️  DEBUG: Chat app or active threads not available")
+                            pass
                 
                 # Use default workflow manager
-                print(f"🔄 DEBUG: Using default workflow manager")
                 self.workflow_manager(thread_id, current_step, message)
                 
             except Exception as e:
-                print(f"❌ DEBUG: Error in enhanced message processing: {e}")
+                print(f"Error in enhanced message processing: {e}")
         
         # Replace the method
         self.process_incoming_message = enhanced_process_incoming_message
@@ -282,7 +254,6 @@ class GmailWorkflow:
             return message.get('snippet', '')
             
         except Exception as e:
-            print(f"❌ DEBUG: Error extracting email body: {e}")
             return message.get('snippet', '')
 
     def process_incoming_message(self, message: dict) -> None:
@@ -291,11 +262,8 @@ class GmailWorkflow:
             thread_id = message['threadId']
             message_id = message['id']
             
-            print(f"🔍 DEBUG: [ORIGINAL] Processing message {message_id} in thread {thread_id}")
-            
             # Skip if already processed
             if message_id in self.processed_messages:
-                print(f"⚠️  DEBUG: [ORIGINAL] Message {message_id} already processed")
                 return
             self.processed_messages.add(message_id)
             
@@ -303,8 +271,6 @@ class GmailWorkflow:
             headers = message['payload'].get('headers', [])
             from_header = next((h['value'] for h in headers if h['name'].lower() == 'from'), '')
             to_header = next((h['value'] for h in headers if h['name'].lower() == 'to'), '')
-            
-            print(f"📧 DEBUG: [ORIGINAL] From: {from_header}, To: {to_header}")
             
             # Get our email address
             my_email = os.getenv("GMAIL_ADDRESS", "")
@@ -314,65 +280,51 @@ class GmailWorkflow:
             
             # Skip messages from us or to others
             if my_email.lower() in from_header.lower():
-                print(f"⚠️  DEBUG: [ORIGINAL] Skipping - from ourselves")
                 return
             if my_email.lower() not in to_header.lower():
-                print(f"⚠️  DEBUG: [ORIGINAL] Skipping - not to us")
                 return
             if 'noreply' in from_header.lower():
-                print(f"⚠️  DEBUG: [ORIGINAL] Skipping - noreply")
                 return
             
             # Load workflow state
             workflow_state = self.load_workflow_state(thread_id)
             if not workflow_state:
-                print(f"⚠️  DEBUG: [ORIGINAL] No workflow state for thread {thread_id}")
                 return
                 
             current_step = workflow_state['step']
             
             # Skip if workflow completed
             if current_step >= 4:
-                print(f"⚠️  DEBUG: [ORIGINAL] Workflow completed (step {current_step})")
                 return
             
-            print(f"🔄 DEBUG: [ORIGINAL] Processing reply - Thread: {thread_id}, Step: {current_step}")
             self.workflow_manager(thread_id, current_step, message)
             
         except Exception as e:
-            print(f"❌ DEBUG: [ORIGINAL] Error processing message: {e}")
+            print(f"Error processing message: {e}")
 
     def workflow_manager(self, thread_id: str, step: int, incoming_message: dict = {}, message_body: str = "", message_subject: str = "") -> None:
         """Enhanced workflow manager that supports AI-generated responses"""
         try:
-            print(f"🔄 DEBUG: Workflow manager called - Thread: {thread_id}, Step: {step}")
-            
             # Get user email from thread (for AI integration)
             user_email = getattr(self, 'active_threads', {}).get(thread_id, {}).get('email', '')
-            print(f"👤 DEBUG: User email for thread: {user_email}")
             
             if step < 3:  # Steps 0, 1, 2 send responses
                 # If message_body is provided (AI-generated), use it; otherwise fallback to default
                 if message_body:
                     body = message_body
-                    print(f"🤖 DEBUG: Using AI-generated body (length: {len(body)})")
                 else:
                     body = f"Testing testing - Follow-up #{step + 1}"
-                    print(f"⚠️  DEBUG: Using default body: {body}")
                 
                 subject = message_subject
-                print(f"📧 DEBUG: Sending reply with subject: '{subject}' (empty if default)")
                 
                 self.send_reply_email(thread_id, body, message_body=body, message_subject=subject)
                 self.save_workflow_state(thread_id, step=step+1, status=f'sent_followup_{step+1}')
-                print(f"✅ DEBUG: Step {step}->{step+1} complete - Thread: {thread_id}")
                 
             elif step == 3:
-                print(f"🏁 DEBUG: Workflow completed - Thread: {thread_id}")
                 self.save_workflow_state(thread_id, step=4, status='completed')
                 
         except Exception as e:
-            print(f"❌ DEBUG: Error in workflow_manager: {e}")
+            print(f"Error in workflow_manager: {e}")
 
     def send_reply_email(self, thread_id: str, body: str, message_body: str = "", message_subject: str = "") -> None:
         """Send reply in existing thread using HTML formatting and paragraph breaks like initial email"""
@@ -503,7 +455,7 @@ class GmailWorkflow:
             flow_control=flow_control
         )
         
-        print("Pub/Sub listener started (indefinite waiting enabled)")
+        print("Pub/Sub listener started")
         return future
 
     def stop_listening(self, future):
