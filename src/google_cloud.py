@@ -13,6 +13,7 @@ from gmail_utils import authenticate_gmail, setup_gmail_push_notifications
 from rich.console import Console
 from rich.panel import Panel
 from rich.rule import Rule
+from rich.markdown import Markdown
 
 # Load environment variables
 load_dotenv()
@@ -54,7 +55,7 @@ class GmailWorkflow:
         cleaned_message = self.clean_html_content(message)
         
         panel = Panel(
-            cleaned_message,
+            Markdown(cleaned_message),
             title=f"[bold blue]{title}[/bold blue]",
             border_style="blue"
         )
@@ -66,7 +67,7 @@ class GmailWorkflow:
         cleaned_message = self.clean_html_content(message)
         
         panel = Panel(
-            cleaned_message,
+            Markdown(cleaned_message),
             title=f"[bold yellow]{title}[/bold yellow]",
             border_style="yellow"
         )
