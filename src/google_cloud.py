@@ -259,13 +259,45 @@ class GmailWorkflow:
                     if part.get('mimeType') == 'text/plain':
                         body_data = part.get('body', {}).get('data', '')
                         if body_data:
-                            return base64.urlsafe_b64decode(body_data).decode('utf-8')
+                            decoded = base64.urlsafe_b64decode(body_data).decode('utf-8')
+                            
+                            # Extract only new content, remove quoted thread
+                            lines = decoded.split('\n')
+                            new_content_lines = []
+                            for line in lines:
+                                if (line.strip().startswith('From:') or 
+                                    line.strip().startswith('Sent:') or 
+                                    line.strip().startswith('To:') or
+                                    line.strip().startswith('Subject:') or
+                                    '________________________________' in line or
+                                    line.strip().startswith('>')):
+                                    break
+                                new_content_lines.append(line)
+                            
+                            result = '\n'.join(new_content_lines).strip()
+                            return result
             
             # Handle single part messages
             elif payload.get('mimeType') == 'text/plain':
                 body_data = payload.get('body', {}).get('data', '')
                 if body_data:
-                    return base64.urlsafe_b64decode(body_data).decode('utf-8')
+                    decoded = base64.urlsafe_b64decode(body_data).decode('utf-8')
+                    
+                    # Extract only new content, remove quoted thread
+                    lines = decoded.split('\n')
+                    new_content_lines = []
+                    for line in lines:
+                        if (line.strip().startswith('From:') or 
+                            line.strip().startswith('Sent:') or 
+                            line.strip().startswith('To:') or
+                            line.strip().startswith('Subject:') or
+                            '________________________________' in line or
+                            line.strip().startswith('>')):
+                            break
+                        new_content_lines.append(line)
+                    
+                    result = '\n'.join(new_content_lines).strip()
+                    return result
             
             # Fallback to snippet
             return message.get('snippet', '')
