@@ -196,10 +196,8 @@ class IntegratedWorkflow:
         """Main workflow execution"""
         try:
             # Setup components
-            # console.print("[yellow]Setting up workflow components...[/yellow]")
             self.setup_chat_application()
             
-            # console.print("[yellow]Setting up enhanced Pub/Sub listener...[/yellow]")
             # Setup enhanced integration with AI chat app and active threads
             self.workflow.setup_enhanced_integration(
                 chat_app=self.chat_app,
@@ -207,7 +205,6 @@ class IntegratedWorkflow:
             )
             
             # Start Gmail listener
-            # console.print("[yellow]Starting Gmail listener...[/yellow]")
             listener_future = self.workflow.start_listening()
             
             # Define target users

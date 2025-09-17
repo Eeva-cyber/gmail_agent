@@ -72,6 +72,7 @@ class GmailWorkflow:
         )
         console.print(panel)
         console.print()  
+        
     def clean_html_content(self, content: str) -> str:
         """Clean HTML content for terminal display"""
         import re
@@ -421,6 +422,7 @@ class GmailWorkflow:
             ).execute()
 
             console.print(f"[dim]Reply sent - Thread: {thread_id[:12]}...[/dim]")
+            console.print("[green]Workflow active - Rafael monitoring for incoming emails ...[/green]")
                 
         except Exception as e:
             console.print(f"[red]Error sending reply: {e}[/red]")
