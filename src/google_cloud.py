@@ -361,17 +361,17 @@ class GmailWorkflow:
         """Enhanced workflow manager that supports AI-generated responses"""
         try:            
             if step < 3:  # Steps 0, 1, 2 send responses
-                # If message_body is provided (AI-generated), use it; otherwise fallback to default
+                # Only send reply if we have a proper AI-generated response
                 if message_body:
-                    body = message_body
+                    # Display Rafael's response
+                    self.display_rafael_message(message_body, f"Rafael - Follow-up #{step + 1}")
+                    
+                    self.send_reply_email(thread_id, message_body, message_body=message_body, message_subject=message_subject)
+                    self.save_workflow_state(thread_id, step=step+1, status=f'sent_followup_{step+1}')
                 else:
-                    body = f"Testing testing - Follow-up #{step + 1}"
-                
-                # Display Rafael's response
-                self.display_rafael_message(body, f"Rafael - Follow-up #{step + 1}")
-                
-                self.send_reply_email(thread_id, body, message_body=body, message_subject=message_subject)
-                self.save_workflow_state(thread_id, step=step+1, status=f'sent_followup_{step+1}')
+                    # Mark as processed but don't advance step to avoid reprocessing
+                    # self.save_workflow_state(thread_id, step=step, status=f'processed_no_response_{step}')
+                    console.print(f"[yellow]⚠ Skipped reply for thread {thread_id[:12]}... - No AI response available[/yellow]")
                 
             elif step == 3:
                 self.save_workflow_state(thread_id, step=4, status='completed')
