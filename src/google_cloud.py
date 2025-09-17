@@ -9,6 +9,11 @@ from google.cloud import pubsub_v1
 from supabase import create_client, Client
 from gmail_utils import authenticate_gmail, setup_gmail_push_notifications
 
+# Rich imports - minimal set
+from rich.console import Console
+from rich.panel import Panel
+from rich.rule import Rule
+
 # Load environment variables
 load_dotenv()
 
@@ -16,6 +21,9 @@ load_dotenv()
 PROJECT_ID = os.getenv("PROJECT_ID", "")
 SUBSCRIPTION_NAME = os.getenv("SUBSCRIPTION_NAME", "")
 TOPIC_NAME = os.getenv("TOPIC_NAME", "")
+
+# Initialize Rich Console
+console = Console()
 
 class GmailWorkflow:
     def __init__(self):
@@ -29,9 +37,87 @@ class GmailWorkflow:
         self.subscription_path = self.subscriber.subscription_path(PROJECT_ID, SUBSCRIPTION_NAME)
         self.processed_messages = set()
         
+        # Track conversations for display
+        self.conversations = {}  # thread_id -> conversation history
+        
         # Setup Gmail push notifications
         setup_gmail_push_notifications(self.service, PROJECT_ID, TOPIC_NAME)
-        print("Gmail workflow initialized")
+        
+        console.print("[green]✓[/green] Gmail Workflow Initialized - Rafael Email Agent ready")
+
+    def display_conversation_header(self, user_email: str, thread_id: str):
+        """Display conversation header with user info"""
+        console.print(f"\n[bold white]User:[/bold white] {user_email} | [bold white]Thread:[/bold white] {thread_id[:12]}...")
+
+    def display_rafael_message(self, message: str, title: str = "Rafael"):
+        """Display Rafael's message in blue"""
+        cleaned_message = self.clean_html_content(message)
+        
+        panel = Panel(
+            cleaned_message,
+            title=f"[bold blue]{title}[/bold blue]",
+            border_style="blue"
+        )
+        console.print(panel)
+
+    def display_user_message(self, message: str, title: str = "User Response"):
+        """Display user's message in yellow"""
+        cleaned_message = self.clean_html_content(message)
+        
+        panel = Panel(
+            cleaned_message,
+            title=f"[bold yellow]{title}[/bold yellow]",
+            border_style="yellow"
+        )
+        console.print(panel)
+
+    def clean_html_content(self, content: str) -> str:
+        """Clean HTML content for terminal display"""
+        import re
+        
+        # Remove HTML tags
+        content = re.sub(r'<[^>]+>', '', content)
+        
+        # Decode HTML entities
+        import html
+        content = html.unescape(content)
+        
+        # Clean up extra whitespace
+        content = re.sub(r'\n\s*\n', '\n\n', content)
+        content = content.strip()
+        
+        return content
+
+    def extract_user_email_from_thread(self, thread_id: str) -> str:
+        """Extract user email from thread"""
+        try:
+            # Check if we have it cached
+            if hasattr(self, 'active_threads') and thread_id in self.active_threads:
+                return self.active_threads[thread_id].get('email', 'Unknown')
+            
+            # Try to get from thread messages
+            thread = self.service.users().threads().get(userId='me', id=thread_id).execute()
+            
+            my_email = os.getenv("GMAIL_ADDRESS", "")
+            if not my_email:
+                profile = self.service.users().getProfile(userId='me').execute()
+                my_email = profile.get('emailAddress', '')
+            
+            # Find first message not from us
+            for message in thread['messages']:
+                headers = message['payload'].get('headers', [])
+                from_header = next((h['value'] for h in headers if h['name'].lower() == 'from'), '')
+                if my_email.lower() not in from_header.lower():
+                    # Extract email from header (handle "Name <email>" format)
+                    import re
+                    email_match = re.search(r'<([^>]+)>', from_header)
+                    if email_match:
+                        return email_match.group(1)
+                    return from_header
+            
+            return "Unknown"
+        except:
+            return "Unknown"
 
     def send_initial_email(self, recipient: str, subject: str, body: str) -> str:
         """Send first email and create workflow record"""
@@ -47,7 +133,7 @@ class GmailWorkflow:
             'raw': base64.urlsafe_b64encode(
                 f"To: {recipient}\r\n"
                 f"Subject: {subject}\r\n"
-                f"Content-Type: text/html; charset=utf-8\r\n" #text/plain to text/html
+                f"Content-Type: text/html; charset=utf-8\r\n"
                 f"\r\n{html_body}".encode('utf-8')
             ).decode()
         }
@@ -60,93 +146,19 @@ class GmailWorkflow:
             thread_id = sent_message['threadId']
             self.save_workflow_state(thread_id, step=0, status='sent_initial')
             
-            print(f"Initial email sent - Thread: {thread_id}")
+            # Display the conversation
+            self.display_conversation_header(recipient, thread_id)
+            self.display_rafael_message(body, "Rafael - Initial Email")
+            
+            console.print(f"[dim]Initial email sent - Thread: {thread_id}[/dim]")
             return thread_id
             
         except Exception as e:
-            print(f"Error sending initial email: {e}")
+            console.print(f"[red]✗ Error sending initial email: {e}[/red]")
             raise
 
-    def pubsub_listener(self, event_data: bytes) -> None:
-        """Enhanced Pub/Sub listener with improved error handling (no timeouts)"""
-        try:
-            notification = json.loads(event_data.decode('utf-8'))
-            history_id = notification.get('historyId')
-            
-            if not history_id:
-                return
-            
-            # Fetch messages using history API
-            try:
-                history_response = self.service.users().history().list(
-                    userId='me',
-                    startHistoryId=str(max(1, int(history_id) - 100)),
-                    historyTypes=['messageAdded']
-                ).execute()
-            except Exception:
-                # Fallback to recent messages if history fails
-                try:
-                    recent_messages = self.service.users().messages().list(
-                        userId='me',
-                        maxResults=5
-                    ).execute()
-                    
-                    if 'messages' in recent_messages:
-                        for msg in recent_messages['messages']:
-                            try:
-                                full_message = self.service.users().messages().get(
-                                    userId='me',
-                                    id=msg['id'],
-                                    format='full'
-                                ).execute()
-                                
-                                # Only process recent messages (last 5 minutes)
-                                internal_date = int(full_message.get('internalDate', 0))
-                                if (time.time() * 1000 - internal_date) < 5 * 60 * 1000:
-                                    self.process_incoming_message(full_message)
-                            except Exception as msg_error:
-                                # Skip individual messages that can't be fetched
-                                if "not found" in str(msg_error).lower():
-                                    print(f"Message {msg['id']} not found, skipping...")
-                                else:
-                                    print(f"Error fetching message {msg['id']}: {msg_error}")
-                                continue
-                except Exception as fallback_error:
-                    print(f"Fallback message fetch failed: {fallback_error}")
-                return
-            
-            # Process history response
-            if 'history' not in history_response:
-                return
-                
-            for history_item in history_response['history']:
-                if 'messagesAdded' in history_item:
-                    for message_added in history_item['messagesAdded']:
-                        message_id = message_added['message']['id']
-                        
-                        try:
-                            full_message = self.service.users().messages().get(
-                                userId='me',
-                                id=message_id,
-                                format='full'
-                            ).execute()
-                            
-                            self.process_incoming_message(full_message)
-                        except Exception as fetch_error:
-                            # Handle individual message fetch errors gracefully
-                            if "not found" in str(fetch_error).lower():
-                                print(f"Message {message_id} not found, skipping...")
-                            else:
-                                print(f"Error fetching message {message_id}: {fetch_error}")
-                            continue
-                        
-        except Exception as e:
-            # Handle timeout errors silently (these are expected)
-            if "timed out" in str(e).lower():
-                # This is normal - Pub/Sub read timeouts are expected, just continue
-                pass
-            else:
-                print(f"Error in pubsub_listener: {e}")
+    
+      
 
     def setup_enhanced_integration(self, chat_app=None, active_threads=None):
         """Setup integration with AI chat application and thread tracking"""
@@ -172,9 +184,8 @@ class GmailWorkflow:
                 headers = message['payload'].get('headers', [])
                 from_header = next((h['value'] for h in headers if h['name'].lower() == 'from'), '')
                 to_header = next((h['value'] for h in headers if h['name'].lower() == 'to'), '')
-                subject_header = next((h['value'] for h in headers if h['name'].lower() == 'subject'), '')
                 
-                # Extract email body for debugging
+                # Extract email body
                 email_body = self.extract_email_body(message)
                 
                 my_email = os.getenv("GMAIL_ADDRESS", "")
@@ -182,7 +193,7 @@ class GmailWorkflow:
                     profile = self.service.users().getProfile(userId='me').execute()
                     my_email = profile.get('emailAddress', '')
                 
-                # Skip validation (same as original)
+                # Skip validation
                 if my_email.lower() in from_header.lower():
                     return
                 if my_email.lower() not in to_header.lower():
@@ -199,20 +210,24 @@ class GmailWorkflow:
                 if current_step >= 4:
                     return
                 
+                # Display incoming user message
+                console.print(Rule(style="white"))
+                self.display_user_message(email_body, f"User Response #{current_step + 1}")
+                
                 # Generate AI response if chat app is available
                 if hasattr(self, 'chat_app') and self.chat_app and hasattr(self, 'active_threads'):
-                    user_email = self.active_threads.get(thread_id, {}).get('email', '')
-                    if user_email:
+                    user_email_from_threads = self.active_threads.get(thread_id, {}).get('email', '')
+                    if user_email_from_threads:
                         try:
                             # Enhanced prompt with email content
                             base_prompts = {
-                                0: f"The user {user_email} has replied to our initial welcome email. Their response was: '{email_body[:500]}...' Generate a follow-up email asking about their background and interests, acknowledging their previous response.",
-                                1: f"The user {user_email} has replied again. Their latest response was: '{email_body[:500]}...' Generate a more engaging follow-up email building on this conversation.",
-                                2: f"The user {user_email} replied with: '{email_body[:500]}...' Based on their interests shown in this conversation, generate a personalized event invitation.",
-                                3: f"Generate a final follow-up for {user_email} based on their response: '{email_body[:500]}...'"
+                                0: f"The user {user_email_from_threads} has replied to our initial welcome email. Their response was: '{email_body[:500]}...' Generate a follow-up email asking about their background and interests, acknowledging their previous response.",
+                                1: f"The user {user_email_from_threads} has replied again. Their latest response was: '{email_body[:500]}...' Generate a more engaging follow-up email building on this conversation.",
+                                2: f"The user {user_email_from_threads} replied with: '{email_body[:500]}...' Based on their interests shown in this conversation, generate a personalized event invitation.",
+                                3: f"Generate a final follow-up for {user_email_from_threads} based on their response: '{email_body[:500]}...'"
                             }
                             
-                            prompt = base_prompts.get(current_step, f"Generate a follow-up for {user_email}")
+                            prompt = base_prompts.get(current_step, f"Generate a follow-up for {user_email_from_threads}")
                             
                             ai_response = self.chat_app.process_user_input(prompt)
                             
@@ -226,13 +241,13 @@ class GmailWorkflow:
                 self.workflow_manager(thread_id, current_step, message)
                 
             except Exception as e:
-                print(f"Error in enhanced message processing: {e}")
+                console.print(f"[red]Error in enhanced message processing: {e}[/red]")
         
         # Replace the method
         self.process_incoming_message = enhanced_process_incoming_message
 
     def extract_email_body(self, message: dict) -> str:
-        """Extract email body from Gmail message for debugging and AI context"""
+        """Extract email body from Gmail message"""
         try:
             payload = message.get('payload', {})
             
@@ -297,17 +312,20 @@ class GmailWorkflow:
             if current_step >= 4:
                 return
             
+            # Display the incoming user message
+            email_body = self.extract_email_body(message)
+            
+            console.print(Rule(style="white"))
+            self.display_user_message(email_body, f"User Response #{current_step + 1}")
+            
             self.workflow_manager(thread_id, current_step, message)
             
         except Exception as e:
-            print(f"Error processing message: {e}")
+            console.print(f"[red]Error processing message: {e}[/red]")
 
     def workflow_manager(self, thread_id: str, step: int, incoming_message: dict = {}, message_body: str = "", message_subject: str = "") -> None:
         """Enhanced workflow manager that supports AI-generated responses"""
-        try:
-            # Get user email from thread (for AI integration)
-            user_email = getattr(self, 'active_threads', {}).get(thread_id, {}).get('email', '')
-            
+        try:            
             if step < 3:  # Steps 0, 1, 2 send responses
                 # If message_body is provided (AI-generated), use it; otherwise fallback to default
                 if message_body:
@@ -315,19 +333,21 @@ class GmailWorkflow:
                 else:
                     body = f"Testing testing - Follow-up #{step + 1}"
                 
-                subject = message_subject
+                # Display Rafael's response
+                self.display_rafael_message(body, f"Rafael - Follow-up #{step + 1}")
                 
-                self.send_reply_email(thread_id, body, message_body=body, message_subject=subject)
+                self.send_reply_email(thread_id, body, message_body=body, message_subject=message_subject)
                 self.save_workflow_state(thread_id, step=step+1, status=f'sent_followup_{step+1}')
                 
             elif step == 3:
                 self.save_workflow_state(thread_id, step=4, status='completed')
+                console.print(f"[green]✓ Conversation completed for thread {thread_id[:12]}...[/green]")
                 
         except Exception as e:
-            print(f"Error in workflow_manager: {e}")
+            console.print(f"[red]Error in workflow_manager: {e}[/red]")
 
     def send_reply_email(self, thread_id: str, body: str, message_body: str = "", message_subject: str = "") -> None:
-        """Send reply in existing thread using HTML formatting and paragraph breaks like initial email"""
+        """Send reply in existing thread using HTML formatting"""
         try:
             # Get thread messages
             thread = self.service.users().threads().get(
@@ -357,16 +377,16 @@ class GmailWorkflow:
             subject_header = next((h['value'] for h in headers if h['name'].lower() == 'subject'), '')
             message_id_header = next((h['value'] for h in headers if h['name'].lower() == 'message-id'), '')
 
-            # Prepare reply subject - use custom subject if provided, otherwise default behavior
+            # Prepare reply subject
             if message_subject:
                 reply_subject = message_subject
             else:
                 reply_subject = f"Re: {subject_header}" if not subject_header.startswith('Re:') else subject_header
 
-            # Use custom body if provided, otherwise use the passed body parameter
+            # Use custom body if provided
             email_body = message_body or body
 
-            # --- Format reply body with HTML paragraph breaks (like initial email) ---
+            # Format reply body with HTML paragraph breaks
             paragraphs = [p.strip() for p in email_body.strip().split('\n\n') if p.strip()]
             if not paragraphs:
                 paragraphs = [email_body.strip()]
@@ -388,7 +408,7 @@ class GmailWorkflow:
                     f"Subject: {reply_subject}\r\n"
                     f"In-Reply-To: {message_id_header}\r\n"
                     f"References: {message_id_header}\r\n"
-                    f"Content-Type: text/html; charset=utf-8\r\n" #text/plain to text/html
+                    f"Content-Type: text/html; charset=utf-8\r\n"
                     f"\r\n{html_body}".encode('utf-8')
                 ).decode(),
                 'threadId': thread_id
@@ -399,10 +419,10 @@ class GmailWorkflow:
                 userId='me', body=reply_message
             ).execute()
 
-            print(f"Reply sent - Thread: {thread_id}")
+            console.print(f"[dim]Reply sent - Thread: {thread_id[:12]}...[/dim]")
 
         except Exception as e:
-            print(f"Error sending reply: {e}")
+            console.print(f"[red]Error sending reply: {e}[/red]")
 
     def save_workflow_state(self, thread_id: str, step: int, status: str) -> None:
         """Save workflow state to Supabase"""
@@ -420,7 +440,7 @@ class GmailWorkflow:
             ).execute()
             
         except Exception as e:
-            print(f"Error saving workflow state: {e}")
+            console.print(f"[red]Error saving workflow state: {e}[/red]")
 
     def load_workflow_state(self, thread_id: str) -> Optional[Dict]:
         """Load workflow state from Supabase"""
@@ -428,34 +448,29 @@ class GmailWorkflow:
             result = self.client.table('workflows').select('*').eq('thread_id', thread_id).execute()
             return result.data[0] if result.data else None
         except Exception as e:
-            print(f"Error loading workflow state: {e}")
+            console.print(f"[red]Error loading workflow state: {e}[/red]")
             return None
 
     def start_listening(self):
-        """Start Pub/Sub listener with indefinite waiting capability"""
+        """Start Pub/Sub listener"""
         def callback(message):
             try:
                 self.pubsub_listener(message.data)
                 message.ack()
             except Exception as e:
-                # Handle timeout errors silently, others with logging
-                if "timed out" in str(e).lower():
-                    # Silent handling of timeout - this is normal
-                    pass
-                else:
-                    print(f"Error processing Pub/Sub message: {e}")
-                # Always acknowledge to prevent redelivery
+                if "timed out" not in str(e).lower():
+                    console.print(f"[red]Error processing Pub/Sub message: {e}[/red]")
                 message.ack()
         
-        # Configure flow control without timeout constraints
+        # Configure flow control
         flow_control = pubsub_v1.types.FlowControl(max_messages=10)
         future = self.subscriber.subscribe(
             self.subscription_path, 
             callback=callback,
             flow_control=flow_control
         )
-        
-        print("Pub/Sub listener started")
+
+        console.status("[yellow]Pub/Sub listener started - waiting for emails...[/yellow]", spinner="dots")
         return future
 
     def stop_listening(self, future):
@@ -463,8 +478,57 @@ class GmailWorkflow:
         if future:
             future.cancel()
 
+    def pubsub_listener(self, event_data: bytes) -> None:
+        """Simplified Pub/Sub listener for Gmail notifications"""
+        try:
+            notification = json.loads(event_data.decode('utf-8'))
+            history_id = notification.get('historyId')
+            
+            if not history_id:
+                return
+            
+            # Try history API first, fallback to recent messages
+            messages_to_process = []
+            
+            try:
+                history_response = self.service.users().history().list(
+                    userId='me',
+                    startHistoryId=str(max(1, int(history_id) - 100)),
+                    historyTypes=['messageAdded']
+                ).execute()
+                
+                # Extract messages from history
+                for history_item in history_response.get('history', []):
+                    for message_added in history_item.get('messagesAdded', []):
+                        messages_to_process.append(message_added['message']['id'])
+                        
+            except Exception:
+                # Fallback: get recent messages
+                try:
+                    recent_messages = self.service.users().messages().list(
+                        userId='me', maxResults=5
+                    ).execute()
+                    
+                    messages_to_process = [msg['id'] for msg in recent_messages.get('messages', [])]
+                except Exception:
+                    return
+            
+            # Process each message
+            for message_id in messages_to_process:
+                try:
+                    full_message = self.service.users().messages().get(
+                        userId='me', id=message_id, format='full'
+                    ).execute()
+                    
+                    self.process_incoming_message(full_message)
+                except Exception:
+                    continue  # Silently skip failed messages
+                    
+        except Exception:
+            pass  # Silently handle all errors including timeouts
+
 def main():
-    """Run the standalone workflow system (for testing)"""
+    """Run the standalone workflow system"""    
     workflow = GmailWorkflow()
     
     # Start listener
@@ -473,20 +537,23 @@ def main():
     # Optional: Send initial email
     recipient = input("Enter recipient email (or press Enter to skip): ").strip()
     if recipient:
+        subject = input("Enter email subject: ").strip() or "Welcome to RAID Club!"
+        body = input("Enter email body: ").strip() or "Welcome to RAID! We're excited to have you join our community."
+        
         workflow.send_initial_email(
             recipient=recipient,
-            subject="Test Workflow Email", 
-            body="This is the initial email. Please reply to continue."
+            subject=subject, 
+            body=body
         )
     
-    print("Gmail workflow running. Press Ctrl+C to stop.")
+    console.print("[green]Gmail workflow running. Press Ctrl+C to stop.[/green]")
     
     try:
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
         workflow.stop_listening(listener_future)
-        print("Workflow stopped")
+        console.print("[red]Workflow stopped[/red]")
 
 if __name__ == "__main__":
     main()
