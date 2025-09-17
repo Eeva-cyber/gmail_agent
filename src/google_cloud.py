@@ -47,7 +47,7 @@ class GmailWorkflow:
 
     def display_conversation_header(self, user_email: str, thread_id: str):
         """Display conversation header with user info"""
-        console.print(f"\n[bold white]User:[/bold white] {user_email} | [bold white]Thread:[/bold white] {thread_id[:12]}...")
+        console.print(f"\n[bold white]User:[/bold white] {user_email} | [bold white]Thread:[/bold white] {thread_id}...")
 
     def display_rafael_message(self, message: str, title: str = "Rafael"):
         """Display Rafael's message in blue"""
@@ -371,12 +371,12 @@ class GmailWorkflow:
                 else:
                     # Mark as processed but don't advance step to avoid reprocessing
                     # self.save_workflow_state(thread_id, step=step, status=f'processed_no_response_{step}')
-                    console.print(f"[yellow]⚠ Skipped reply for thread {thread_id[:12]}... - No AI response available[/yellow]")
+                    console.print(f"[yellow]⚠ Skipped reply for thread {thread_id}... - No AI response available[/yellow]")
                 
             elif step == 3:
                 self.save_workflow_state(thread_id, step=4, status='completed')
-                console.print(f"[green]✓ Conversation completed for thread {thread_id[:12]}...[/green]")
-                
+                console.print(f"[green]✓ Conversation completed for thread {thread_id}...[/green]")
+
         except Exception as e:
             console.print(f"[red]Error in workflow_manager: {e}[/red]")
 

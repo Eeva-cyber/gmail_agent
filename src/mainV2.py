@@ -135,7 +135,9 @@ class IntegratedWorkflow:
         """Read emails from CSV file and return list of email addresses"""
         user_emails = []
         try:
-            csv_path = os.path.join("src", "email_address.csv")
+            # Get the directory where this script is located, then find the CSV
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            csv_path = os.path.join(script_dir, "email_address.csv")
             with open(csv_path, 'r', encoding='utf-8') as csv_file:
                 reader = csv.DictReader(csv_file)
                 for row in reader:
@@ -151,7 +153,6 @@ class IntegratedWorkflow:
 
     def start_conversation_flow(self, user_emails: list):
         """Start the conversation flow for multiple users"""
-        # console.print(f"[cyan]Starting conversations for {len(user_emails)} recipient(s)[/cyan]")
         
         for email in user_emails:
             try:
@@ -208,13 +209,17 @@ class IntegratedWorkflow:
             listener_future = self.workflow.start_listening()
             
             # Define target users
-            # try:
-            #     user_emails = self.read_emails_from_csv()
-            # except Exception as e:
-            #     user_emails = os.getenv("RECIPIENT_TEST_EMAIL", "")
-            user_emails = os.getenv("RECIPIENT_TEST_EMAIL", "")
-            
-            user_emails = [user_emails]
+            # TODO implement CSV reader
+            try:
+                user_emails = self.read_emails_from_csv()
+            except Exception as e:
+                user_emails = os.getenv("RECIPIENT_TEST_EMAIL", "")
+                user_emails = [user_emails]
+
+            for email in user_emails:
+                print(email)
+
+                        
             
             # Start conversations
             console.print()
