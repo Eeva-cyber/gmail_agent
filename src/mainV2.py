@@ -229,8 +229,8 @@ class IntegratedWorkflow:
             
             # Keep the workflow running
             console.print(Rule(style="white"))
-            console.print("[green]Workflow active - Rafael monitoring for incoming emails[/green]")
             console.print("[dim]Press Ctrl+C to stop[/dim]")
+            console.print("[green]Workflow active - Rafael monitoring for incoming emails ...[/green]")
             
             try:
                 while True:

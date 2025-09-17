@@ -59,6 +59,7 @@ class GmailWorkflow:
             border_style="blue"
         )
         console.print(panel)
+        console.print()  
 
     def display_user_message(self, message: str, title: str = "User Response"):
         """Display user's message in yellow"""
@@ -70,7 +71,7 @@ class GmailWorkflow:
             border_style="yellow"
         )
         console.print(panel)
-
+        console.print()  
     def clean_html_content(self, content: str) -> str:
         """Clean HTML content for terminal display"""
         import re
@@ -420,7 +421,7 @@ class GmailWorkflow:
             ).execute()
 
             console.print(f"[dim]Reply sent - Thread: {thread_id[:12]}...[/dim]")
-
+                
         except Exception as e:
             console.print(f"[red]Error sending reply: {e}[/red]")
 
@@ -470,7 +471,6 @@ class GmailWorkflow:
             flow_control=flow_control
         )
 
-        console.status("[yellow]Pub/Sub listener started - waiting for emails...[/yellow]", spinner="dots")
         return future
 
     def stop_listening(self, future):
@@ -479,7 +479,7 @@ class GmailWorkflow:
             future.cancel()
 
     def pubsub_listener(self, event_data: bytes) -> None:
-        """Simplified Pub/Sub listener for Gmail notifications"""
+        """Pub/Sub listener for Gmail notifications"""
         try:
             notification = json.loads(event_data.decode('utf-8'))
             history_id = notification.get('historyId')
@@ -525,7 +525,7 @@ class GmailWorkflow:
                     continue  # Silently skip failed messages
                     
         except Exception:
-            pass  # Silently handle all errors including timeouts
+            pass  # Silently handle all errors including timeout
 
 def main():
     """Run the standalone workflow system"""    
