@@ -9,6 +9,8 @@ from google.cloud import pubsub_v1
 from supabase import create_client, Client
 from gmail_utils import authenticate_gmail, setup_gmail_push_notifications
 
+from database import DatabaseManager
+
 # Rich imports - minimal set
 from rich.console import Console
 from rich.panel import Panel
@@ -154,6 +156,22 @@ class GmailWorkflow:
             self.display_rafael_message(body, "Rafael - Initial Email")
             
             console.print(f"[dim]Initial email sent - Thread: {thread_id}[/dim]")
+            
+            # Add to Database
+            db = DatabaseManager(self.client)
+            
+            # Create a dictionary to record message details
+            message_dict = {
+                "thread_id": thread_id,
+                "message_id": sent_message['id'],
+                "sender":"agent",
+                "body": body,
+                "subject": subject,
+                "timestamp": datetime.now().isoformat()
+            }
+            
+            
+            
             return thread_id
             
         except Exception as e:
@@ -169,9 +187,6 @@ class GmailWorkflow:
             self.chat_app = chat_app
         if active_threads is not None:
             self.active_threads = active_threads
-            
-        # Override process_incoming_message for AI integration
-        original_process_incoming = self.process_incoming_message
         
         def enhanced_process_incoming_message(message: dict):
             try:

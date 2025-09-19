@@ -215,16 +215,16 @@ class IntegratedWorkflow:
                 user_emails = [user_emails]
 
             for email in user_emails:
-                print(email)
+                console.print(email)
 
                         
             
             # Start conversations
-            console.print()
+            console.print() # New Line for Spacing
             self.start_conversation_flow(user_emails)
             
             # Display status
-            console.print()
+            console.print() # New Line for Spacing
             self.display_workflow_status()
             
             # Keep the workflow running
