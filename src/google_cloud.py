@@ -208,15 +208,16 @@ class GmailWorkflow:
                 # Extract email body
                 email_body = self.extract_email_body(message)
                 
-                # Add User Response to Database 
-                message_dict = {
-                    "thread_id": thread_id,
-                    "message_id": message_id,
-                    "sender": "user",
-                    "body": email_body,
-                    "subject": next((h['value'] for h in headers if h['name'].lower() == 'subject'), ''),
-                    "timestamp": datetime.now().isoformat()
-                }
+                # Add User Response to Database only for active threads
+                if hasattr(self, 'active_threads') and thread_id in self.active_threads:
+                    message_dict = {
+                        "thread_id": thread_id,
+                        "message_id": message_id,
+                        "sender": "user",
+                        "body": email_body,
+                        "subject": next((h['value'] for h in headers if h['name'].lower() == 'subject'), ''),
+                        "timestamp": datetime.now().isoformat()
+                    }
                 
                 # Get user name from database
                 user_result = self.client.table('users').select('name').eq('email', from_header).execute()
