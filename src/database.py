@@ -1,17 +1,11 @@
-import supabase
-from supabase import create_client, Client
+from supabase import Client
 from datetime import datetime, timezone
-import os
-from dotenv import load_dotenv
 from typing import Dict, Any, Tuple, Optional
 
 class DatabaseManager:
-    def __init__(self) -> None:
-        load_dotenv()
-        self.supabase_url = os.getenv("DATABASE_URL", "")
-        self.supabase_key = os.getenv("DATABASE_API_KEY", "")
-        self.client: Client = create_client(self.supabase_url, self.supabase_key)
-        
+    def __init__(self, client: Client) -> None:
+        self.client = client
+
     def store_message(self, user_data: Dict[str, Any], message_data: Dict[str, Any]) -> Tuple[bool, Optional[str]]:
         """
         Stores a user and their associated message in the database.
