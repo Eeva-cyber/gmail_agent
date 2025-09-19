@@ -130,9 +130,9 @@ class IntegratedWorkflow:
         response: str = self.chat_app.process_user_input(prompt)
         return response
     
-    def read_emails_from_csv(self) -> list[str]:
-        """Read emails from CSV file and return list of email addresses"""
-        user_emails = []
+    def read_emails_from_csv(self) -> list[dict]:
+        """Read emails from CSV file and return list of dictionaries"""
+        user_data = []
         try:
             # Get the directory where this script is located, then find the CSV
             script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -141,19 +141,22 @@ class IntegratedWorkflow:
                 reader = csv.DictReader(csv_file)
                 for row in reader:
                     email = row.get('Email_Address', '').strip()
-                    if email:
-                        user_emails.append(email)
-            console.print(f"[green]✓ [/green] Loaded {len(user_emails)} emails from CSV")
+                    name = row.get('Name', '').strip()
+                    if email and name:
+                        user_data.append({"email": email, "name": name})
+            console.print(f"[green]✓ [/green] Loaded {len(user_data)} users from CSV")
         except Exception as e:
             console.print(f"[red]✗ [/red] Error reading CSV: {e}")
 
-        return user_emails
+        return user_data
     
 
-    def start_conversation_flow(self, user_emails: list):
+    def start_conversation_flow(self, user_data: list[dict]):
         """Start the conversation flow for multiple users"""
         
-        for email in user_emails:
+        for user in user_data:
+            email = user['email']
+            name = user['name']
             try:
                 console.status(f"[yellow]→ Processing {email}...[/yellow]", spinner="dots")
                 
@@ -167,7 +170,7 @@ class IntegratedWorkflow:
                 thread_id = self.workflow.send_initial_email(
                     recipient=email,
                     subject="Welcome to RAID!",
-                    body=formatted_body
+                    body=formatted_body, name=name
                 )
                 
                 # Track the thread
@@ -209,19 +212,20 @@ class IntegratedWorkflow:
             
             # Define target users
             try:
-                user_emails = self.read_emails_from_csv()
+                user_data = self.read_emails_from_csv()
             except Exception as e:
-                user_emails = os.getenv("RECIPIENT_TEST_EMAIL", "")
-                user_emails = [user_emails]
+                test_email = os.getenv("RECIPIENT_TEST_EMAIL", "")
+                test_name = os.getenv("RECIPIENT_TEST_NAME", "")
+                user_data = [{"email": test_email, "name": test_name}]
 
-            for email in user_emails:
-                console.print(email)
+            for user in user_data:
+                console.print(user["email"])
 
                         
             
             # Start conversations
             console.print() # New Line for Spacing
-            self.start_conversation_flow(user_emails)
+            self.start_conversation_flow(user_data)
             
             # Display status
             console.print() # New Line for Spacing
