@@ -62,7 +62,6 @@ class IntegratedWorkflow:
     
     def __init__(self):
         """Initialize the integrated workflow system"""
-        # console.print("[magenta]RAID Club Email Agent - Integrated Workflow[/magenta]")
         
         self.workflow = GmailWorkflow()
         self.chat_app = None
@@ -209,7 +208,6 @@ class IntegratedWorkflow:
             listener_future = self.workflow.start_listening()
             
             # Define target users
-            # TODO implement CSV reader
             try:
                 user_emails = self.read_emails_from_csv()
             except Exception as e:
