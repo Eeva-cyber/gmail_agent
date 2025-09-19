@@ -310,58 +310,6 @@ class GmailWorkflow:
         except Exception as e:
             return message.get('snippet', '')
 
-    def process_incoming_message(self, message: dict) -> None:
-        """Check if message is a reply to our workflow and process it"""
-        try:
-            thread_id = message['threadId']
-            message_id = message['id']
-            
-            # Skip if already processed
-            if message_id in self.processed_messages:
-                return
-            self.processed_messages.add(message_id)
-            
-            # Extract headers
-            headers = message['payload'].get('headers', [])
-            from_header = next((h['value'] for h in headers if h['name'].lower() == 'from'), '')
-            to_header = next((h['value'] for h in headers if h['name'].lower() == 'to'), '')
-            
-            # Get our email address
-            my_email = os.getenv("GMAIL_ADDRESS", "")
-            if not my_email:
-                profile = self.service.users().getProfile(userId='me').execute()
-                my_email = profile.get('emailAddress', '')
-            
-            # Skip messages from us or to others
-            if my_email.lower() in from_header.lower():
-                return
-            if my_email.lower() not in to_header.lower():
-                return
-            if 'noreply' in from_header.lower():
-                return
-            
-            # Load workflow state
-            workflow_state = self.load_workflow_state(thread_id)
-            if not workflow_state:
-                return
-                
-            current_step = workflow_state['step']
-            
-            # Skip if workflow completed
-            if current_step >= 4:
-                return
-            
-            # Display the incoming user message
-            email_body = self.extract_email_body(message)
-            
-            console.print(Rule(style="white"))
-            self.display_user_message(email_body, f"User Response #{current_step + 1}")
-            
-            self.workflow_manager(thread_id, current_step, message)
-            
-        except Exception as e:
-            console.print(f"[red]Error processing message: {e}[/red]")
-
     def workflow_manager(self, thread_id: str, step: int, incoming_message: dict = {}, message_body: str = "", message_subject: str = "") -> None:
         """Enhanced workflow manager that supports AI-generated responses"""
         try:            
@@ -567,34 +515,3 @@ class GmailWorkflow:
                     
         except Exception:
             pass  # Silently handle all errors including timeout
-
-def main():
-    """Run the standalone workflow system"""    
-    workflow = GmailWorkflow()
-    
-    # Start listener
-    listener_future = workflow.start_listening()
-    
-    # Optional: Send initial email
-    recipient = input("Enter recipient email (or press Enter to skip): ").strip()
-    if recipient:
-        subject = input("Enter email subject: ").strip() or "Welcome to RAID Club!"
-        body = input("Enter email body: ").strip() or "Welcome to RAID! We're excited to have you join our community."
-        
-        workflow.send_initial_email(
-            recipient=recipient,
-            subject=subject, 
-            body=body
-        )
-    
-    console.print("[green]Gmail workflow running. Press Ctrl+C to stop.[/green]")
-    
-    try:
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        workflow.stop_listening(listener_future)
-        console.print("[red]Workflow stopped[/red]")
-
-if __name__ == "__main__":
-    main()
