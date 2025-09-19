@@ -96,15 +96,20 @@ CREATE INDEX IF NOT EXISTS idx_workflows_thread_id ON workflows(thread_id);
      ```
    - This file controls which users receive initial welcome emails and enables handling multiple conversations simultaneously
 
-3. **Database Setup (Required for google-cloud-test.py)**
+3. **Database Setup & Environment Variables**
 
-   - Create Supabase account at [supabase.com](https://supabase.com) or setup local PostgreSQL
-   - Run the database schema above
-   - Add to `.env`: `DATABASE_URL=your_connection_string` and `DATABASE_API_KEY=your_key`
+   - Create a `.env` file by copying `.env.example` and populate it with your credentials. This file centralizes configuration for the application's different services.
+   - **Core Services**:
+     - `OPENAI_API_KEY`, `OPENAI_ENDPOINT`, `OPENAI_MODEL`: For connecting to the language model.
+     - `DATABASE_URL`, `DATABASE_API_KEY`: For connecting to your Supabase/PostgreSQL database.
+     - `NOTION_TOKEN`: If you are integrating with Notion.
+   - **Google Cloud & Gmail**:
+     - `GOOGLE_CLOUD_PROJECT`, `PROJECT_ID`, `TOPIC_NAME`, `SUBSCRIPTION_NAME`: For Pub/Sub integration.
+     - `GMAIL_ADDRESS`: The Gmail account the agent will use.
+   - **Testing**:
+     - `RECIPIENT_TEST_EMAIL`, `RECIPIENT_TEST_NAME`: For sending test emails.
 
-4. Environment variables: copy `.env.example` → `.env`, then `source .env`
-
-5. Google Cloud (Gmail Push + Pub/Sub)
+4. Google Cloud (Gmail Push + Pub/Sub)
 
    - Install gcloud SDK: see [Install the Google Cloud CLI](https://cloud.google.com/sdk/docs/install)
    - Authenticate and set project:
@@ -127,7 +132,7 @@ CREATE INDEX IF NOT EXISTS idx_workflows_thread_id ON workflows(thread_id);
      --project=${PROJECT_ID}
      ```
 
-6. Run
+5. Run
 
 - Orchestrator (older workflow, single-reply, ~5 min await, no Pub/Sub): `uv run main.py`
 - Integrated workflow (with CSV): `uv run src/mainV2.py`
