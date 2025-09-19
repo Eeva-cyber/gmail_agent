@@ -125,7 +125,7 @@ class GmailWorkflow:
         except:
             return "Unknown"
 
-    def send_initial_email(self, recipient: str, subject: str, body: str) -> str:
+    def send_initial_email(self, recipient: str, subject: str, body: str, name: str) -> str:
         """Send first email and create workflow record"""
         # Use HTML content type and wrap body in HTML template for better formatting
         # Create email content with proper MIME structure
@@ -173,6 +173,8 @@ class GmailWorkflow:
                 "subject": subject,
                 "timestamp": datetime.now().isoformat()
             }
+            
+            db.store_message({"email": recipient, "name": name}, message_dict)
             
             
             
