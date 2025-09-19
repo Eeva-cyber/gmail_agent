@@ -4,3 +4,4 @@ credentials.json
 .venv/
 
 token.json
+.csv
