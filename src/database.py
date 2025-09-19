@@ -48,7 +48,7 @@ class DatabaseManager:
             if error:
                 return False, f"Error upserting user: {getattr(error, 'message', 'Unknown error')}"
             
-            print(f"✓ User upserted successfully: {user_data['email']}")
+            # print(f"✓ User upserted successfully: {user_data['email']}")
 
             # 2. Insert the message record
             # The 'user_email' field in the message table is populated from the user_data
@@ -71,7 +71,7 @@ class DatabaseManager:
             if error:
                 return False, f"Error inserting message: {getattr(error, 'message', 'Unknown error')}"
             
-            print(f"✓ Message inserted successfully into thread '{message_data['thread_id']}'")
+            # print(f"✓ Message inserted successfully into thread '{message_data['thread_id']}'")
             return True, None
 
         except KeyError as e:
