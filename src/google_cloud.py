@@ -230,7 +230,8 @@ class GmailWorkflow:
                 # Get user name from database
                 try:
                     user_result = self.client.table('users').select('name').eq('email', user_email).execute()
-                    user_name = user_result.data[0]['name'] if user_result.data else "Unknown"
+                    # If user.result.data is empty, means initial email, default to "Rafael"
+                    user_name = user_result.data[0]['name'] if user_result.data else "Rafael"
                 except Exception: 
                     user_name = "Unknown"
                 
