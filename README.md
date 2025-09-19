@@ -22,22 +22,42 @@ An autonomous AI system that manages email correspondence with new RAID (Respons
 
 1. **Email Initiation**: AI agent (Rafael) sends personalized welcome emails
 2. **Conversation Management**: Handles back-and-forth email threads
-3. **Data Extraction**: LLM parses conversations to structured fields
-4. **Database Storage**: Application + workflow tracking tables
-5. **Event Processing**: Gmail push → Pub/Sub topic → long-running listener
+3. **Database Storage**: Stores messages, users and workflow management data
+4. **Event Processing**: Gmail push → Pub/Sub topic → long-running listener
+5. **Markdown → HTML**: Render markdown to HTML before sending messages so recipients see styled content across mail clients
 
 ## Database Schema
 
 ```sql
-CREATE TABLE IF NOT EXISTS club_applications (
-  email VARCHAR(255) PRIMARY KEY,
-  name VARCHAR(255) NOT NULL,
-  conversation JSONB,
-  major VARCHAR(255),
-  motivation TEXT,
-  desired_activities JSONB
+-- 1. Create the users table
+DROP TYPE IF EXISTS sender_type;
+
+
+CREATE TYPE sender_type AS ENUM ('user', 'agent');
+
+CREATE TABLE users (
+    email TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
 
+COMMENT ON TABLE users IS 'Stores user information for the Gmail agent.';
+
+-- 2. Create the messages table
+CREATE TABLE messages (
+    thread_id TEXT NOT NULL,
+    message_id TEXT NOT NULL,
+    user_email TEXT NOT NULL REFERENCES users(email) ON DELETE CASCADE,
+    sender sender_type NOT NULL,
+    body TEXT NOT NULL,
+    subject TEXT NOT NULL,
+    timestamp TIMESTAMPTZ NOT NULL,
+    PRIMARY KEY (thread_id, message_id)
+);
+
+COMMENT ON TABLE messages IS 'Stores individual email messages for the Gmail agent.';
+
+-- 3. Create table for workflow logging
 CREATE TABLE IF NOT EXISTS workflows (
   id SERIAL PRIMARY KEY,
   thread_id VARCHAR(255) UNIQUE NOT NULL,
@@ -47,6 +67,18 @@ CREATE TABLE IF NOT EXISTS workflows (
   updated_at TIMESTAMP DEFAULT NOW()
 );
 
+-- 4. Create Indexes for Performance
+
+-- Index for fetching all messages in a specific thread
+CREATE INDEX idx_messages_thread_id ON messages(thread_id);
+
+-- Index for finding all messages for a specific user
+CREATE INDEX idx_messages_user_email ON messages(user_email);
+
+-- Index for sorting messages chronologically within a thread
+CREATE INDEX idx_messages_timestamp ON messages(timestamp);
+
+-- Index for filtering workflows for different threads
 CREATE INDEX IF NOT EXISTS idx_workflows_thread_id ON workflows(thread_id);
 ```
 
