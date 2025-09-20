@@ -371,16 +371,6 @@ class GmailWorkflow:
                     # Display Rafael's response
                     self.display_rafael_message(message_body, f"Rafael - Follow-up #{step + 1}")
                     
-                    html_body = markdown.markdown(
-                    message_body.strip(),
-                    output_format='html5',
-                    extensions=['extra', 'smarty']
-                    )
-
-                    # Wrap in div for consistent style (optional)
-                    html_body = f"<div style=\"font-family: Arial, sans-serif; line-height: 1.6; color: #333;\">{html_body}</div>"
-                    print(f"🤖 DEBUG: Using HTML-converted body (length: {len(html_body)})")
-
                     subject = message_subject
                     self.send_reply_email(thread_id, message_body, message_body=message_body, message_subject=message_subject)
                     self.save_workflow_state(thread_id, step=step+1, status=f'sent_followup_{step+1}')
@@ -397,6 +387,7 @@ class GmailWorkflow:
             console.print(f"[red]Error in workflow_manager: {e}[/red]")
 
     def send_reply_email(self, thread_id: str, body: str, message_body: str = "", message_subject: str = "") -> None:
+        """Send reply in existing thread using HTML formatting and paragraph breaks like initial email"""
         """Send reply in existing thread using HTML formatting"""
         try:
             # Get thread messages
@@ -433,20 +424,21 @@ class GmailWorkflow:
             else:
                 reply_subject = f"Re: {subject_header}" if not subject_header.startswith('Re:') else subject_header
 
-            # Use custom body if provided
+            # Use custom body
             email_body = message_body or body
 
-            # Format reply body with HTML paragraph breaks
-            paragraphs = [p.strip() for p in email_body.strip().split('\n\n') if p.strip()]
-            if not paragraphs:
-                paragraphs = [email_body.strip()]
-            body_paragraphs = [f"<p>{p}</p>" for p in paragraphs]
-            formatted_html_body = '\n'.join(body_paragraphs)
+            # Convert markdown to HTML
+            html_content = markdown.markdown(
+                email_body.strip(),
+                output_format='html5',
+                extensions=['extra', 'smarty']
+            )
 
+            # Wrap in div for consistent style and full HTML structure
             html_body = f"""
 <html>
   <body style=\"font-family: Arial, sans-serif; font-size: 15px; color: #222;\">
-    {formatted_html_body}
+    {html_content}
   </body>
 </html>
 """
@@ -458,7 +450,7 @@ class GmailWorkflow:
                     f"Subject: {reply_subject}\r\n"
                     f"In-Reply-To: {message_id_header}\r\n"
                     f"References: {message_id_header}\r\n"
-                    f"Content-Type: text/html; charset=utf-8\r\n"
+                    f"Content-Type: text/html; charset=utf-8\r\n" #text/plain to text/html
                     f"\r\n{html_body}".encode('utf-8')
                 ).decode(),
                 'threadId': thread_id
@@ -469,11 +461,10 @@ class GmailWorkflow:
                 userId='me', body=reply_message
             ).execute()
 
-            console.print(f"[dim]Reply sent - Thread: {thread_id[:12]}...[/dim]")
-            console.print("[green]Workflow active - Rafael monitoring for incoming emails ...[/green]")
-                
+            print(f"Reply sent - Thread: {thread_id}")
+
         except Exception as e:
-            console.print(f"[red]Error sending reply: {e}[/red]")
+            print(f"Error sending reply: {e}")
 
     def save_workflow_state(self, thread_id: str, step: int, status: str) -> None:
         """Save workflow state to Supabase"""
