@@ -356,28 +356,19 @@ class GmailWorkflow:
             print(f"👤 DEBUG: User email for thread: {user_email}")
 
             if step < 3:  # Steps 0, 1, 2 send responses
-                # Ensure AI response is available before sending email
-                if not message_body:
-                    print(f"⚠️ DEBUG: Skipping email send - AI response not ready")
-                    return
-
-                # Convert markdown to HTML before sending
-                html_body = markdown.markdown(
-                    message_body.strip(),
-                    output_format='html5',
-                    extensions=['extra', 'smarty']
-                )
-                # Wrap in div for consistent style (optional)
-                html_body = f"<div style=\"font-family: Arial, sans-serif; line-height: 1.6; color: #333;\">{html_body}</div>"
-                print(f"🤖 DEBUG: Using HTML-converted body (length: {len(html_body)})")
-
-                subject = message_subject
-                print(f"📧 DEBUG: Sending reply with subject: '{subject}' (empty if default)")
-
-                self.send_reply_email(thread_id, html_body, message_body=html_body, message_subject=subject)
-                self.save_workflow_state(thread_id, step=step+1, status=f'sent_followup_{step+1}')
-                print(f"✅ DEBUG: Step {step}->{step+1} complete - Thread: {thread_id}")
-
+                # Only send reply if we have a proper AI-generated response
+                if message_body:
+                    # Display Rafael's response
+                    self.display_rafael_message(message_body, f"Rafael - Follow-up #{step + 1}")
+                    
+                    subject = message_subject
+                    self.send_reply_email(thread_id, message_body, message_body=message_body, message_subject=message_subject)
+                    self.save_workflow_state(thread_id, step=step+1, status=f'sent_followup_{step+1}')
+                else:
+                    # Mark as processed but don't advance step to avoid reprocessing
+                    # self.save_workflow_state(thread_id, step=step, status=f'processed_no_response_{step}')
+                    console.print(f"[yellow]⚠ Skipped reply for thread {thread_id}... - No AI response available[/yellow]")
+                
             elif step == 3:
                 print(f"🏁 DEBUG: Workflow completed - Thread: {thread_id}")
                 self.save_workflow_state(thread_id, step=4, status='completed')
@@ -386,6 +377,7 @@ class GmailWorkflow:
             print(f"❌ DEBUG: Error in workflow_manager: {e}")
 
     def send_reply_email(self, thread_id: str, body: str, message_body: str = "", message_subject: str = "") -> None:
+        """Send reply in existing thread using HTML formatting and paragraph breaks like initial email"""
         """Send reply in existing thread using HTML formatting"""
         try:
             # Get thread messages
@@ -422,20 +414,21 @@ class GmailWorkflow:
             else:
                 reply_subject = f"Re: {subject_header}" if not subject_header.startswith('Re:') else subject_header
 
-            # Use custom body if provided, otherwise use the passed body parameter
+            # Use custom body
             email_body = message_body or body
 
-            # --- Format reply body with HTML paragraph breaks (like initial email) ---
-            paragraphs = [p.strip() for p in email_body.strip().split('\n\n') if p.strip()]
-            if not paragraphs:
-                paragraphs = [email_body.strip()]
-            body_paragraphs = [f"<p>{p}</p>" for p in paragraphs]
-            formatted_html_body = '\n'.join(body_paragraphs)
+            # Convert markdown to HTML
+            html_content = markdown.markdown(
+                email_body.strip(),
+                output_format='html5',
+                extensions=['extra', 'smarty']
+            )
 
+            # Wrap in div for consistent style and full HTML structure
             html_body = f"""
 <html>
   <body style=\"font-family: Arial, sans-serif; font-size: 15px; color: #222;\">
-    {formatted_html_body}
+    {html_content}
   </body>
 </html>
 """
