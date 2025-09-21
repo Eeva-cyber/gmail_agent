@@ -86,7 +86,7 @@ class IntegratedWorkflow:
                 output_format='html',
                 extensions=['extra', 'smarty']
             )
-            print(f"DEBUG - Successfully converted to HTML: {html_body}")
+            # print(f"DEBUG - Successfully converted to HTML: {html_body}")
             
             # Wrap in proper HTML structure
             html_output = f"""
