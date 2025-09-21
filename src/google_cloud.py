@@ -17,6 +17,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.rule import Rule
 from rich.markdown import Markdown
+import re
 
 # Load environment variables
 load_dotenv()
@@ -194,8 +195,22 @@ class GmailWorkflow:
         
         def enhanced_process_incoming_message(message: dict):
             try:
+                # Debug: Check for required keys to prevent KeyError
+                if 'threadId' not in message:
+                    console.print(f"[yellow]Skipping message {message.get('id', 'unknown')} - missing threadId. Keys: {list(message.keys())}[/yellow]")
+                    return
+                
+                if 'id' not in message:
+                    console.print(f"[yellow]Skipping message - missing id. Keys: {list(message.keys())}[/yellow]")
+                    return
+                
                 thread_id = message['threadId']
                 message_id = message['id']
+                
+                my_email = os.getenv("GMAIL_ADDRESS", "")
+                if not my_email:
+                    profile = self.service.users().getProfile(userId='me').execute()
+                    my_email = profile.get('emailAddress', '')
                 
                 # Skip if already processed
                 if message_id in self.processed_messages:
@@ -207,30 +222,34 @@ class GmailWorkflow:
                 from_header = next((h['value'] for h in headers if h['name'].lower() == 'from'), '')
                 to_header = next((h['value'] for h in headers if h['name'].lower() == 'to'), '')
                 
+                # Pre-parse email from from_header to handle "Name <email>" format bug
+                email_match = re.search(r'<([^>]+)>', from_header)
+                user_email = email_match.group(1) if email_match else from_header
+                
                 # Extract email body
                 email_body = self.extract_email_body(message)
                 
+                # Get user name from database
+                try:
+                    user_result = self.client.table('users').select('name').eq('email', user_email).execute()
+                    user_name = user_result.data[0]['name'] if user_result.data else "Rafael"
+                except Exception: 
+                    user_name = "Unknown"
+                
                 # Add User Response to Database only for active threads
                 if hasattr(self, 'active_threads') and thread_id in self.active_threads:
+                    # Check whether from user or agent
+                    sender_type = "agent" if my_email.lower() in from_header.lower() else "user"
                     message_dict = {
                         "thread_id": thread_id,
                         "message_id": message_id,
-                        "sender": "user",
+                        "sender": sender_type,
                         "body": email_body,
                         "subject": next((h['value'] for h in headers if h['name'].lower() == 'subject'), ''),
                         "timestamp": datetime.now().isoformat()
                     }
                 
-                # Get user name from database
-                user_result = self.client.table('users').select('name').eq('email', from_header).execute()
-                user_name = user_result.data[0]['name'] if user_result.data else "Unknown"
-
-                self.db.store_message({"email": from_header, "name": user_name}, message_dict)
-                
-                my_email = os.getenv("GMAIL_ADDRESS", "")
-                if not my_email:
-                    profile = self.service.users().getProfile(userId='me').execute()
-                    my_email = profile.get('emailAddress', '')
+                    self.db.store_message({"email": user_email, "name": user_name}, message_dict)
                 
                 # Skip validation
                 if my_email.lower() in from_header.lower():
@@ -444,6 +463,10 @@ class GmailWorkflow:
             console.print(f"[dim]Reply sent - Thread: {thread_id[:12]}...[/dim]")
             console.print("[green]Workflow active - Rafael monitoring for incoming emails ...[/green]")
             
+            #Parse email from from_header to handle "Name <email>" format bug
+            email_match = re.search(r'<([^>]+)>', from_header)
+            user_email = email_match.group(1) if email_match else from_header
+            
             # Store Response in Database
             message_dict = {
                 "thread_id": thread_id,
@@ -453,7 +476,7 @@ class GmailWorkflow:
                 "subject": reply_subject,
                 "timestamp": datetime.now().isoformat()
             }
-            self.db.store_message({"email": from_header, "name": name}, message_dict)
+            self.db.store_message({"email": user_email, "name": name}, message_dict)
 
         except Exception as e:
             console.print(f"[red]Error sending reply: {e}[/red]")
