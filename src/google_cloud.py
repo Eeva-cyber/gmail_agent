@@ -164,7 +164,7 @@ class GmailWorkflow:
             console.print(f"[dim]Initial email sent - Thread: {thread_id}[/dim]")
             
             # Add to Database
-            
+                       
             # Create a dictionary to record message details
             message_dict = {
                 "thread_id": thread_id,
@@ -176,6 +176,7 @@ class GmailWorkflow:
             }
             
             self.db.store_message({"email": recipient, "name": name}, message_dict)
+            
             
             return thread_id
             
@@ -233,6 +234,7 @@ class GmailWorkflow:
                 try:
                     user_result = self.client.table('users').select('name').eq('email', user_email).execute()
                     user_name = user_result.data[0]['name'] if user_result.data else "Rafael"
+                    
                 except Exception: 
                     user_name = "Unknown"
                 
@@ -240,6 +242,7 @@ class GmailWorkflow:
                 if hasattr(self, 'active_threads') and thread_id in self.active_threads:
                     # Check whether from user or agent
                     sender_type = "agent" if my_email.lower() in from_header.lower() else "user"
+
                     message_dict = {
                         "thread_id": thread_id,
                         "message_id": message_id,
@@ -258,7 +261,7 @@ class GmailWorkflow:
                     return
                 if 'noreply' in from_header.lower():
                     return
-                
+                               
                 # Load workflow state
                 workflow_state = self.load_workflow_state(thread_id)
                 if not workflow_state:
@@ -361,7 +364,8 @@ class GmailWorkflow:
         except Exception as e:
             return message.get('snippet', '')
 
-    def workflow_manager(self, thread_id: str, step: int, incoming_message: dict = {}, message_body: str = "", message_subject: str = "", name: str = "Unknown") -> None:        
+
+    def workflow_manager(self, thread_id: str, step: int, incoming_message: dict = {}, message_body: str = "", message_subject: str = "", name: str = "Unknown") -> None:
         """Enhanced workflow manager that supports AI-generated responses"""
         try:            
             if step < 3:  # Steps 0, 1, 2 send responses
@@ -369,8 +373,7 @@ class GmailWorkflow:
                 if message_body:
                     # Display Rafael's response
                     self.display_rafael_message(message_body, f"Rafael - Follow-up #{step + 1}")
-                    
-                    subject = message_subject
+
                     self.send_reply_email(thread_id, message_body, message_body=message_body, message_subject=message_subject, name=name)
                     self.save_workflow_state(thread_id, step=step+1, status=f'sent_followup_{step+1}')
                 else:
@@ -386,7 +389,6 @@ class GmailWorkflow:
             console.print(f"[red]Error in workflow_manager: {e}[/red]")
 
     def send_reply_email(self, thread_id: str, body: str, message_body: str = "", message_subject: str = "", name: str = "Unknown") -> None:
-        """Send reply in existing thread using HTML formatting and paragraph breaks like initial email"""
         """Send reply in existing thread using HTML formatting"""
         try:
             # Get thread messages
@@ -449,7 +451,7 @@ class GmailWorkflow:
                     f"Subject: {reply_subject}\r\n"
                     f"In-Reply-To: {message_id_header}\r\n"
                     f"References: {message_id_header}\r\n"
-                    f"Content-Type: text/html; charset=utf-8\r\n" #text/plain to text/html
+                    f"Content-Type: text/html; charset=utf-8\r\n"
                     f"\r\n{html_body}".encode('utf-8')
                 ).decode(),
                 'threadId': thread_id
@@ -463,10 +465,12 @@ class GmailWorkflow:
             console.print(f"[dim]Reply sent - Thread: {thread_id[:12]}...[/dim]")
             console.print("[green]Workflow active - Rafael monitoring for incoming emails ...[/green]")
             
+
             #Parse email from from_header to handle "Name <email>" format bug
             email_match = re.search(r'<([^>]+)>', from_header)
             user_email = email_match.group(1) if email_match else from_header
             
+
             # Store Response in Database
             message_dict = {
                 "thread_id": thread_id,
@@ -481,6 +485,7 @@ class GmailWorkflow:
         except Exception as e:
             console.print(f"[red]Error sending reply: {e}[/red]")
 
+            
     def save_workflow_state(self, thread_id: str, step: int, status: str) -> None:
         """Save workflow state to Supabase"""
         try:
