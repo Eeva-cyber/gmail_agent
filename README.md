@@ -145,12 +145,14 @@ CREATE INDEX IF NOT EXISTS idx_workflows_thread_id ON workflows(thread_id);
 - `chat_manager.py` — LLM chat system
 - `LLM_Extraction.py` — Information extraction
 - `email_address.csv` — List of recipient emails for bulk conversations
+- `database.py` — Handles databse operations, including logging for users and messages
 - `.env.example` — Environment template
 
 ## Current Status
 
 - Generates personalized emails
-- Extracts and stores member info
-- Handles multiple conversations
+- Extracts and stores member info in Postgres/Supabase
+- Handles multiple conversations autonomously
 - Event-driven via Gmail + Pub/Sub (listener runs indefinitely)
-- Response generation, database logging working in `main.py` with infinite event drive architecture on `google_cloud.py`
+- **main.py (Older Version)**: Generates personalized emails, handles single-reply conversations with ~5-minute polling delays, basic database logging for extracted member info (no Pub/Sub or multi-user support)
+- **mainV2.py (Newer Version)**: Supports multiple users via CSV, event-driven processing with Gmail Pub/Sub for real-time responses, comprehensive database logging for users and messages, workflow tracking for conversation states
