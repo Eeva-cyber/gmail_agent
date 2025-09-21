@@ -40,6 +40,7 @@ class GmailWorkflow:
         self.subscriber = pubsub_v1.SubscriberClient()
         self.subscription_path = self.subscriber.subscription_path(PROJECT_ID, SUBSCRIPTION_NAME)
         self.processed_messages = set()
+        self.db = DatabaseManager(self.client)
         
         # Track conversations for display
         self.conversations = {}  # thread_id -> conversation history
@@ -162,7 +163,6 @@ class GmailWorkflow:
             console.print(f"[dim]Initial email sent - Thread: {thread_id}[/dim]")
             
             # Add to Database
-            db = DatabaseManager(self.client)
             
             # Create a dictionary to record message details
             message_dict = {
@@ -174,9 +174,7 @@ class GmailWorkflow:
                 "timestamp": datetime.now().isoformat()
             }
             
-            db.store_message({"email": recipient, "name": name}, message_dict)
-            
-            
+            self.db.store_message({"email": recipient, "name": name}, message_dict)
             
             return thread_id
             
@@ -211,6 +209,23 @@ class GmailWorkflow:
                 
                 # Extract email body
                 email_body = self.extract_email_body(message)
+                
+                # Add User Response to Database only for active threads
+                if hasattr(self, 'active_threads') and thread_id in self.active_threads:
+                    message_dict = {
+                        "thread_id": thread_id,
+                        "message_id": message_id,
+                        "sender": "user",
+                        "body": email_body,
+                        "subject": next((h['value'] for h in headers if h['name'].lower() == 'subject'), ''),
+                        "timestamp": datetime.now().isoformat()
+                    }
+                
+                # Get user name from database
+                user_result = self.client.table('users').select('name').eq('email', from_header).execute()
+                user_name = user_result.data[0]['name'] if user_result.data else "Unknown"
+
+                self.db.store_message({"email": from_header, "name": user_name}, message_dict)
                 
                 my_email = os.getenv("GMAIL_ADDRESS", "")
                 if not my_email:
@@ -255,7 +270,7 @@ class GmailWorkflow:
                             
                             ai_response = self.chat_app.process_user_input(prompt)
                             
-                            self.workflow_manager(thread_id, current_step, message, message_body=ai_response)
+                            self.workflow_manager(thread_id, current_step, message, message_body=ai_response, name=user_name)
                             return
                         except Exception as e:
                             # Fall back to default workflow
@@ -327,7 +342,7 @@ class GmailWorkflow:
         except Exception as e:
             return message.get('snippet', '')
 
-    def workflow_manager(self, thread_id: str, step: int, incoming_message: dict = {}, message_body: str = "", message_subject: str = "") -> None:
+    def workflow_manager(self, thread_id: str, step: int, incoming_message: dict = {}, message_body: str = "", message_subject: str = "", name: str = "Unknown") -> None:        
         """Enhanced workflow manager that supports AI-generated responses"""
         try:            
             if step < 3:  # Steps 0, 1, 2 send responses
@@ -337,7 +352,7 @@ class GmailWorkflow:
                     self.display_rafael_message(message_body, f"Rafael - Follow-up #{step + 1}")
                     
                     subject = message_subject
-                    self.send_reply_email(thread_id, message_body, message_body=message_body, message_subject=message_subject)
+                    self.send_reply_email(thread_id, message_body, message_body=message_body, message_subject=message_subject, name=name)
                     self.save_workflow_state(thread_id, step=step+1, status=f'sent_followup_{step+1}')
                 else:
                     # Mark as processed but don't advance step to avoid reprocessing
@@ -351,7 +366,7 @@ class GmailWorkflow:
         except Exception as e:
             console.print(f"[red]Error in workflow_manager: {e}[/red]")
 
-    def send_reply_email(self, thread_id: str, body: str, message_body: str = "", message_subject: str = "") -> None:
+    def send_reply_email(self, thread_id: str, body: str, message_body: str = "", message_subject: str = "", name: str = "Unknown") -> None:
         """Send reply in existing thread using HTML formatting and paragraph breaks like initial email"""
         """Send reply in existing thread using HTML formatting"""
         try:
@@ -422,14 +437,26 @@ class GmailWorkflow:
             }
 
             # Send reply
-            self.service.users().messages().send(
+            reply_response = self.service.users().messages().send(
                 userId='me', body=reply_message
             ).execute()
 
-            print(f"Reply sent - Thread: {thread_id}")
+            console.print(f"[dim]Reply sent - Thread: {thread_id[:12]}...[/dim]")
+            console.print("[green]Workflow active - Rafael monitoring for incoming emails ...[/green]")
+            
+            # Store Response in Database
+            message_dict = {
+                "thread_id": thread_id,
+                "message_id": reply_response['id'],  # From Gmail API
+                "sender": "agent",
+                "body": email_body,  # The formatted reply body
+                "subject": reply_subject,
+                "timestamp": datetime.now().isoformat()
+            }
+            self.db.store_message({"email": from_header, "name": name}, message_dict)
 
         except Exception as e:
-            print(f"Error sending reply: {e}")
+            console.print(f"[red]Error sending reply: {e}[/red]")
 
     def save_workflow_state(self, thread_id: str, step: int, status: str) -> None:
         """Save workflow state to Supabase"""
