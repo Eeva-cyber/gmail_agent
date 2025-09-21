@@ -430,7 +430,7 @@ class GmailWorkflow:
             # Convert markdown to HTML
             html_content = markdown.markdown(
                 email_body.strip(),
-                output_format='html5',
+                output_format='html',
                 extensions=['extra', 'smarty']
             )
 
