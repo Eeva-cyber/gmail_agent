@@ -75,15 +75,15 @@ class IntegratedWorkflow:
             cleaned = cleaned[7:-3].strip()
         elif cleaned.startswith('```') and cleaned.endswith('```'):
             cleaned = cleaned[3:-3].strip()
-            print("DEBUG - Removed code block wrapper")
+            # print("DEBUG - Removed code block wrapper")
             
-        print(f"DEBUG - Before markdown conversion: {cleaned}")
+        # print(f"DEBUG - Before markdown conversion: {cleaned}")
         
         try:
             # Convert markdown to HTML
             html_body = markdown.markdown(
                 cleaned,
-                output_format='html5',
+                output_format='html',
                 extensions=['extra', 'smarty']
             )
             print(f"DEBUG - Successfully converted to HTML: {html_body}")
@@ -218,6 +218,9 @@ class IntegratedWorkflow:
                 
                 # Generate initial AI response
                 initial_response = self.generate_response(email, 0)
+                
+                # Display the raw markdown in cli using rich console
+                self.workflow.display_rafael_message(initial_response, "Rafael - Initial Email")
                 
                 # Post-process email body and markdowns to format in HTML
                 formatted_body = self.format_email_body(initial_response)

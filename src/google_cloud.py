@@ -157,9 +157,8 @@ class GmailWorkflow:
             thread_id = sent_message['threadId']
             self.save_workflow_state(thread_id, step=0, status='sent_initial')
             
-            # Display the conversation
+            # Display the conversation header
             self.display_conversation_header(recipient, thread_id)
-            self.display_rafael_message(body, "Rafael - Initial Email")
             
             console.print(f"[dim]Initial email sent - Thread: {thread_id}[/dim]")
             
