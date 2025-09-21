@@ -71,7 +71,8 @@ class DatabaseManager:
             if error:
                 return False, f"Error inserting message: {getattr(error, 'message', 'Unknown error')}"
             
-            # print(f"✓ Message inserted successfully into thread '{message_data['thread_id']}'")
+             # print(f"✓ Message inserted successfully into thread '{message_data['thread_id']}'")
+
             return True, None
 
         except KeyError as e:

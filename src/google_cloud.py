@@ -1,4 +1,5 @@
 import base64
+import markdown
 import json
 import os
 import time
@@ -129,19 +130,22 @@ class GmailWorkflow:
     def send_initial_email(self, recipient: str, subject: str, body: str, name: str) -> str:
         """Send first email and create workflow record"""
         # Use HTML content type and wrap body in HTML template for better formatting
-        html_body = f"""
-<html>
-  <body style=\"font-family: Arial, sans-serif; font-size: 15px; color: #222;\">
-    {body}
-  </body>
-</html>
-"""
+        # Create email content with proper MIME structure
+        email_content = [
+            f"To: {recipient}",
+            f"Subject: {subject}",
+            "MIME-Version: 1.0",
+            "Content-Type: text/html; charset=utf-8",
+            "",  # Empty line separates headers from body
+            f"<html><body style='font-family: Arial, sans-serif; font-size: 15px; color: #222;'>",
+            body,  # Body already contains HTML from markdown conversion
+            "</body></html>"
+        ]
+        
+        # Join with proper line endings and encode
         message = {
             'raw': base64.urlsafe_b64encode(
-                f"To: {recipient}\r\n"
-                f"Subject: {subject}\r\n"
-                f"Content-Type: text/html; charset=utf-8\r\n"
-                f"\r\n{html_body}".encode('utf-8')
+                '\r\n'.join(email_content).encode('utf-8')
             ).decode()
         }
         
@@ -172,7 +176,6 @@ class GmailWorkflow:
             }
             
             self.db.store_message({"email": recipient, "name": name}, message_dict)
-            
             
             
             return thread_id
@@ -230,15 +233,16 @@ class GmailWorkflow:
                 # Get user name from database
                 try:
                     user_result = self.client.table('users').select('name').eq('email', user_email).execute()
-                    # If user.result.data is empty, means initial email, default to "Rafael"
                     user_name = user_result.data[0]['name'] if user_result.data else "Rafael"
+                    
                 except Exception: 
                     user_name = "Unknown"
                 
                 # Add User Response to Database only for active threads
                 if hasattr(self, 'active_threads') and thread_id in self.active_threads:
                     # Check whether from user or agent
-                    sender_type = "agent" if my_email.lower() in from_header.lower() else "user"              
+                    sender_type = "agent" if my_email.lower() in from_header.lower() else "user"
+
                     message_dict = {
                         "thread_id": thread_id,
                         "message_id": message_id,
@@ -360,6 +364,7 @@ class GmailWorkflow:
         except Exception as e:
             return message.get('snippet', '')
 
+
     def workflow_manager(self, thread_id: str, step: int, incoming_message: dict = {}, message_body: str = "", message_subject: str = "", name: str = "Unknown") -> None:
         """Enhanced workflow manager that supports AI-generated responses"""
         try:            
@@ -420,20 +425,21 @@ class GmailWorkflow:
             else:
                 reply_subject = f"Re: {subject_header}" if not subject_header.startswith('Re:') else subject_header
 
-            # Use custom body if provided
+            # Use custom body
             email_body = message_body or body
 
-            # Format reply body with HTML paragraph breaks
-            paragraphs = [p.strip() for p in email_body.strip().split('\n\n') if p.strip()]
-            if not paragraphs:
-                paragraphs = [email_body.strip()]
-            body_paragraphs = [f"<p>{p}</p>" for p in paragraphs]
-            formatted_html_body = '\n'.join(body_paragraphs)
+            # Convert markdown to HTML
+            html_content = markdown.markdown(
+                email_body.strip(),
+                output_format='html5',
+                extensions=['extra', 'smarty']
+            )
 
+            # Wrap in div for consistent style and full HTML structure
             html_body = f"""
 <html>
   <body style=\"font-family: Arial, sans-serif; font-size: 15px; color: #222;\">
-    {formatted_html_body}
+    {html_content}
   </body>
 </html>
 """
@@ -459,12 +465,13 @@ class GmailWorkflow:
             console.print(f"[dim]Reply sent - Thread: {thread_id[:12]}...[/dim]")
             console.print("[green]Workflow active - Rafael monitoring for incoming emails ...[/green]")
             
-            # Store Response in Database
-            
+
             #Parse email from from_header to handle "Name <email>" format bug
             email_match = re.search(r'<([^>]+)>', from_header)
             user_email = email_match.group(1) if email_match else from_header
             
+
+            # Store Response in Database
             message_dict = {
                 "thread_id": thread_id,
                 "message_id": reply_response['id'],  # From Gmail API
@@ -474,12 +481,11 @@ class GmailWorkflow:
                 "timestamp": datetime.now().isoformat()
             }
             self.db.store_message({"email": user_email, "name": name}, message_dict)
-            
-            
-                
+
         except Exception as e:
             console.print(f"[red]Error sending reply: {e}[/red]")
 
+            
     def save_workflow_state(self, thread_id: str, step: int, status: str) -> None:
         """Save workflow state to Supabase"""
         try:
