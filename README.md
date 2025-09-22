@@ -102,7 +102,6 @@ CREATE INDEX IF NOT EXISTS idx_workflows_thread_id ON workflows(thread_id);
    - **Core Services**:
      - `OPENAI_API_KEY`, `OPENAI_ENDPOINT`, `OPENAI_MODEL`: For connecting to the language model.
      - `DATABASE_URL`, `DATABASE_API_KEY`: For connecting to your Supabase/PostgreSQL database.
-     - `NOTION_TOKEN`: If you are integrating with Notion.
    - **Google Cloud & Gmail**:
      - `GOOGLE_CLOUD_PROJECT`, `PROJECT_ID`, `TOPIC_NAME`, `SUBSCRIPTION_NAME`: For Pub/Sub integration.
      - `GMAIL_ADDRESS`: The Gmail account the agent will use.
