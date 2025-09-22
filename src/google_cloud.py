@@ -231,11 +231,20 @@ class GmailWorkflow:
                 
                 # Get user name from database
                 try:
-                    user_result = self.client.table('users').select('name').eq('email', user_email).execute()
-                    user_name = user_result.data[0]['name'] if user_result.data else "Rafael"
+                    # Check if this is the agent's email
+                    agent_email = os.getenv("GMAIL_ADDRESS", "rasheedmohammed2006@gmail.com")
+                    if user_email == agent_email:
+                        user_name = "Rafael"
+                    else:
+                        user_result = self.client.table('users').select('name').eq('email', user_email).execute()
+                        if user_result.data:
+                            user_name = user_result.data[0]['name']
+                        else:
+                            # Fallback to active threads data (from CSV)
+                            user_name = self.active_threads.get(thread_id, {}).get('name', 'Unknown')
                     
                 except Exception: 
-                    user_name = "Unknown"
+                    user_name = self.active_threads.get(thread_id, {}).get('name', 'Unknown')
                 
                 # Add User Response to Database only for active threads
                 if hasattr(self, 'active_threads') and thread_id in self.active_threads:
