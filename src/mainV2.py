@@ -229,7 +229,7 @@ class IntegratedWorkflow:
                 thread_id = self.workflow.send_initial_email(
                     recipient=email,
                     subject="Welcome to RAID!",
-                    body=formatted_body, name=name
+                    body=formatted_body, name=name, raw_body=initial_response
                 )
                 
                 # Track the thread

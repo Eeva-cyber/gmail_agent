@@ -18,6 +18,7 @@ from rich.panel import Panel
 from rich.rule import Rule
 from rich.markdown import Markdown
 import re
+from bs4 import BeautifulSoup
 
 # Load environment variables
 load_dotenv()
@@ -127,7 +128,7 @@ class GmailWorkflow:
         except:
             return "Unknown"
 
-    def send_initial_email(self, recipient: str, subject: str, body: str, name: str) -> str:
+    def send_initial_email(self, recipient: str, subject: str, body: str, name: str, raw_body: str) -> str:
         """Send first email and create workflow record"""
         # Use HTML content type and wrap body in HTML template for better formatting
         # Create email content with proper MIME structure
@@ -169,7 +170,7 @@ class GmailWorkflow:
                 "thread_id": thread_id,
                 "message_id": sent_message['id'],
                 "sender":"agent",
-                "body": body,
+                "body": raw_body,
                 "subject": subject,
                 "timestamp": datetime.now().isoformat()
             }
@@ -319,57 +320,67 @@ class GmailWorkflow:
         """Extract email body from Gmail message"""
         try:
             payload = message.get('payload', {})
+            snippet = message.get('snippet', '')
+            
+            # Local helper to extract new content (removes quoted thread)
+            def extract_new_content(text: str) -> str:
+                lines = text.split('\n')
+                new_content_lines = []
+                for line in lines:
+                    if (line.strip().startswith('From:') or 
+                        line.strip().startswith('Sent:') or 
+                        line.strip().startswith('To:') or
+                        line.strip().startswith('Subject:') or
+                        '________________________________' in line or
+                        line.strip().startswith('>')):
+                        break
+                    new_content_lines.append(line)
+                return '\n'.join(new_content_lines).strip()
             
             # Handle multipart messages
             if 'parts' in payload:
                 for part in payload['parts']:
-                    if part.get('mimeType') == 'text/plain':
-                        body_data = part.get('body', {}).get('data', '')
-                        if body_data:
-                            decoded = base64.urlsafe_b64decode(body_data).decode('utf-8')
-                            
-                            # Extract only new content, remove quoted thread
-                            lines = decoded.split('\n')
-                            new_content_lines = []
-                            for line in lines:
-                                if (line.strip().startswith('From:') or 
-                                    line.strip().startswith('Sent:') or 
-                                    line.strip().startswith('To:') or
-                                    line.strip().startswith('Subject:') or
-                                    '________________________________' in line or
-                                    line.strip().startswith('>')):
-                                    break
-                                new_content_lines.append(line)
-                            
-                            result = '\n'.join(new_content_lines).strip()
-                            return result
-            
-            # Handle single part messages
-            elif payload.get('mimeType') == 'text/plain':
-                body_data = payload.get('body', {}).get('data', '')
-                if body_data:
+                    body_data = part.get('body', {}).get('data', '')
+                    if not body_data:
+                        continue
+                    
                     decoded = base64.urlsafe_b64decode(body_data).decode('utf-8')
                     
-                    # Extract only new content, remove quoted thread
-                    lines = decoded.split('\n')
-                    new_content_lines = []
-                    for line in lines:
-                        if (line.strip().startswith('From:') or 
-                            line.strip().startswith('Sent:') or 
-                            line.strip().startswith('To:') or
-                            line.strip().startswith('Subject:') or
-                            '________________________________' in line or
-                            line.strip().startswith('>')):
-                            break
-                        new_content_lines.append(line)
+                    if part.get('mimeType') == 'text/plain':
+                        result = extract_new_content(decoded)
+                        return result
                     
-                    result = '\n'.join(new_content_lines).strip()
+                    elif part.get('mimeType') == 'text/html':
+                        try:
+                            soup = BeautifulSoup(decoded, 'html.parser')
+                            text = soup.get_text()
+                            result = extract_new_content(text)
+                            return result
+                        except Exception:
+                            pass
+            
+            # Handle single part messages
+            body_data = payload.get('body', {}).get('data', '')
+            if body_data:
+                decoded = base64.urlsafe_b64decode(body_data).decode('utf-8')
+                
+                if payload.get('mimeType') == 'text/plain':
+                    result = extract_new_content(decoded)
                     return result
+                
+                elif payload.get('mimeType') == 'text/html':
+                    try:
+                        soup = BeautifulSoup(decoded, 'html.parser')
+                        text = soup.get_text()
+                        result = extract_new_content(text)
+                        return result
+                    except Exception:
+                        pass
             
             # Fallback to snippet
-            return message.get('snippet', '')
+            return snippet
             
-        except Exception as e:
+        except Exception:
             return message.get('snippet', '')
 
 
