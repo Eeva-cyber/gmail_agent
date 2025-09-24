@@ -145,13 +145,13 @@ class IntegratedWorkflow:
         
         return files_content
 
-    def generate_response(self, user_email: str, step: int, incoming_message: dict = {}):
+    def generate_response(self, user_email: str, user_name: str, step: int, incoming_message: dict = {}):
         """Generate initial welcome email response"""
         if step != 0:
             raise ValueError(f"This function only handles step 0 (initial email). Got step {step}")
         
         prompt = (
-            f"Generate only the body of the initial welcome email for new member {user_email}. "
+            f"Generate only the body of the initial welcome email for new member {user_name} <{user_email}>. "
             f"Do not include the subject line. The subject will be set separately. Use a friendly, "
             f"conversational tone. You may use **bold** for important points or emphasis where appropriate."
         )
@@ -196,7 +196,7 @@ class IntegratedWorkflow:
                 console.status(f"[yellow]→ Processing {email}...[/yellow]", spinner="dots")
                 
                 # Generate initial AI response
-                initial_response = self.generate_response(email, 0)
+                initial_response = self.generate_response(email, name, 0)
                 
                 # Display the raw markdown in cli using rich console
                 self.workflow.display_rafael_message(initial_response, "Rafael - Initial Email")
