@@ -38,7 +38,7 @@ class DatabaseManager:
             }
             
             # Upsert the user. on_conflict='email' tells Supabase what the unique key is.
-            user_response = self.client.table("users") \
+            user_response = self.client.table("email_users") \
                 .upsert(user_record, on_conflict="email") \
                 .execute()
 
@@ -54,7 +54,7 @@ class DatabaseManager:
             # The 'user_email' field in the message table is populated from the user_data
             message_record = {
                 "thread_id": message_data["thread_id"],
-                "message_id": message_data["message_id"],
+                "email_id": message_data["message_id"],  # Updated to match schema
                 "user_email": user_data["email"], # This links the message to the user
                 "sender": message_data["sender"], # Changed from 'from' to 'sender'
                 "body": message_data["body"],
@@ -62,8 +62,8 @@ class DatabaseManager:
                 "timestamp": message_data["timestamp"]
             }
 
-            message_response = self.client.table("messages") \
-                .upsert(message_record, on_conflict="thread_id,message_id") \
+            message_response = self.client.table("emails") \
+                .upsert(message_record, on_conflict="email_id") \
                 .execute()
                 
             # Check for errors in the message insert operation
@@ -86,5 +86,5 @@ class DatabaseManager:
             print(error_msg)
             return False, error_msg
 
-    
-        
+
+
