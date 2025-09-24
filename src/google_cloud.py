@@ -515,7 +515,7 @@ class GmailWorkflow:
                 'updated_at': datetime.now().isoformat()
             }
             
-            self.client.table('workflows').upsert(
+            self.client.table('email_workflow').upsert(
                 workflow_data,
                 on_conflict='thread_id'
             ).execute()
@@ -526,7 +526,7 @@ class GmailWorkflow:
     def load_workflow_state(self, thread_id: str) -> Optional[Dict]:
         """Load workflow state from Supabase"""
         try:
-            result = self.client.table('workflows').select('*').eq('thread_id', thread_id).execute()
+            result = self.client.table('email_workflow').select('*').eq('thread_id', thread_id).execute()
             return result.data[0] if result.data else None
         except Exception as e:
             console.print(f"[red]Error loading workflow state: {e}[/red]")
