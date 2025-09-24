@@ -146,44 +146,23 @@ class IntegratedWorkflow:
         return files_content
 
     def generate_response(self, user_email: str, step: int, incoming_message: dict = {}):
-        """Generate appropriate response based on workflow step"""
-        if step == 0:
-            # Initial welcome email
-            prompt = (
-                f"Generate only the body of the initial welcome email for new member {user_email}. "
-                f"Do not include the subject line. The subject will be set separately. Use a friendly, "
-                f"conversational tone. You may use **bold** for important points or emphasis where appropriate."
-            )
-        elif step == 1:
-            # First follow-up
-            prompt = (
-                f"Generate a follow-up email for {user_email} in a friendly tone. When mentioning "
-                f"important information (like event names, dates, or key points), put them in "
-                f"double asterisks like this: **Important Info**. Ensure exactly two asterisks "
-                f"on each side, no extra spaces inside the asterisks. Keep the tone conversational."
-            )
-        elif step == 2:
-            # Second follow-up with more engagement
-            prompt = (
-                f"Generate an engaging follow-up email for {user_email}, building on the previous conversation. "
-                f"For important information use: **Important Info** (no spaces between asterisks and text). "
-                f"For lists, use bullet points like this:\n* Item 1\n* Item 2\n"
-                f"Each bullet point should start with '* ' on a new line."
-            )
-        else:
-            # Final personalized invitation
-            prompt = (
-                f"Generate a personalized event invitation for {user_email}. Format important details "
-                f"using double asterisks like this: **Event Name**, **Date**, **Time**, **Location**. "
-                f"No spaces between asterisks and text."
-            )
+        """Generate initial welcome email response"""
+        if step != 0:
+            raise ValueError(f"This function only handles step 0 (initial email). Got step {step}")
+        
+        prompt = (
+            f"Generate only the body of the initial welcome email for new member {user_email}. "
+            f"Do not include the subject line. The subject will be set separately. Use a friendly, "
+            f"conversational tone. You may use **bold** for important points or emphasis where appropriate."
+        )
 
         if self.chat_app is None:
             console.print("[red]✗ [/red] ChatApplication not initialized")
             raise ValueError("ChatApplication is not initialized. Please ensure setup_chat_application() is called before generating a response.")
-        
+    
         response: str = self.chat_app.process_user_input(prompt)
         return response
+    
     
     def read_emails_from_csv(self) -> list[dict]:
         """Read emails from CSV file and return list of dictionaries"""
