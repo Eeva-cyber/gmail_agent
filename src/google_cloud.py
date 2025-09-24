@@ -291,10 +291,10 @@ class GmailWorkflow:
                         try:
                             # Enhanced prompt with email content
                             base_prompts = {
-                                0: f"The user {user_email_from_threads} has replied to our initial welcome email. Their response was: '{email_body[:500]}...' Generate a follow-up email asking about their background and interests, acknowledging their previous response.",
-                                1: f"The user {user_email_from_threads} has replied again. Their latest response was: '{email_body[:500]}...' Generate a more engaging follow-up email building on this conversation.",
-                                2: f"The user {user_email_from_threads} replied with: '{email_body[:500]}...' Based on their interests shown in this conversation, generate a personalized event invitation.",
-                                3: f"Generate a final follow-up for {user_email_from_threads} based on their response: '{email_body[:500]}...'"
+                                0: f"The user {user_email_from_threads} has replied to our initial welcome email. Their response was: '{email_body[:500]}...' Generate a follow-up email asking more about their background and interests, acknowledging their previous response.",
+                                1: f"The user {user_email_from_threads} has replied again. Their latest response was: '{email_body[:500]}...' Generate a more engaging follow-up email building on this conversation. The goal is to get to know them better.",
+                                2: f"The user {user_email_from_threads} replied with: '{email_body[:500]}...' Based on their interests shown in this conversation, generate a personalized response incorporating our club's vision and mission. The goal is to know which events they would like. Do not recommend events.",
+                                3: f"Generate a final sending message for {user_email_from_threads} based on their response: '{email_body[:500]}...'. End the conversation politely and encourage them to reach out anytime. Do not suggest events. MUST include a ending note stating specifically the conversation is now complete with the club agent Rafael."
                             }
                             
                             prompt = base_prompts.get(current_step, f"Generate a follow-up for {user_email_from_threads}")
