@@ -150,10 +150,14 @@ class GmailWorkflow:
             ).decode()
         }
         
+        console.print(f"[dim]DEBUG: Starting send for {recipient} at {datetime.now()}[/dim]")
         try:
+            console.print(f"[dim]DEBUG: About to call Gmail API for {recipient}[/dim]")
+            
             sent_message = self.service.users().messages().send(
                 userId='me', body=message
             ).execute()
+            console.print(f"[dim]DEBUG: Gmail API call succeeded for {recipient}[/dim]")
             
             thread_id = sent_message['threadId']
             self.save_workflow_state(thread_id, step=0, status='sent_initial')
@@ -164,7 +168,7 @@ class GmailWorkflow:
             console.print(f"[dim]Initial email sent - Thread: {thread_id}[/dim]")
             
             # Add to Database
-                       
+            
             # Create a dictionary to record message details
             message_dict = {
                 "thread_id": thread_id,
@@ -175,13 +179,16 @@ class GmailWorkflow:
                 "timestamp": datetime.now().isoformat()
             }
             
-            self.db.store_message({"email": recipient, "name": name}, message_dict)
+            success, error = self.db.store_message({"email": recipient, "name": name}, message_dict)
+            if not success:
+                console.print(f"[red]DB store failed for {recipient}: {error}[/red]")
+            console.print(f"[dim]DEBUG: DB store completed for {recipient}[/dim]")
             
             
             return thread_id
             
         except Exception as e:
-            console.print(f"[red]✗ Error sending initial email: {e}[/red]")
+            console.print(f"[red]Error at {datetime.now()}: {e} (Type: {type(e).__name__})[/red]")
             raise
 
     
