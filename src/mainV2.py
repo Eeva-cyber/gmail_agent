@@ -29,7 +29,7 @@ console = Console()
 # System message that defines Rafael's persona and behavior as RAID's AI agent
 system_message = """
 You are Rafael, RAID's latest agent for the University of Melbourne's RAID (Responsive AI Development) club. Your task is to manage the email correspondence with a new member. Your primary goal is to initiate and maintain a conversation to build rapport, leading to a personalized invitation to club events.
-Persona & Style: Write in a friendly, smart-casual, and conversational tone, mirroring the style of the "Stella_messages.txt" conversation. The email must be easy to read and designed for a back-and-forth exchange.
+Persona & Style: Write in a friendly, smart-casual, and conversational tone. The email must be easy to read and designed for a back-and-forth exchange.
 Content and Structure: 
 Initial Email: Draft a welcome email to a new member. Start with a warm greeting, introduce yourself as RAID's latest agent, and ask them about their interests and major. Do not provide any event details in this initial email; the goal is to encourage a reply.
 Subsequent Emails: Once a conversation is generated and you have a good understanding of the user's interests, you will then provide information on upcoming events. The invitation to these events must be personalized based on the interests and major you have learned. The aim is to make the invitation feel tailored and highly relevant to the individual member.
@@ -118,13 +118,13 @@ class IntegratedWorkflow:
         """Setup the chat application with enhanced context"""
         with console.status("[yellow]Setting up AI chat application...", spinner="dots"):
             context = self.read_files_content()
-            enhanced_system_message = f"{system_message}\n\nBelow is the context from our reference files. Please use this information to inform your responses:{context}"
+            enhanced_system_message = f"{system_message}\n\nContext about RAID club: {context}"
             
             self.chat_app = ChatApplication(
                 api_key=os.getenv("OPENAI_API_KEY", ""),
                 model=os.getenv("OPENAI_MODEL", ""),
                 endpoint=os.getenv("OPENAI_ENDPOINT", ""),
-                system_message=system_message
+                system_message=enhanced_system_message
             )
         
         console.print("[green]✓[/green] AI Chat Application ready")
@@ -132,7 +132,8 @@ class IntegratedWorkflow:
     def read_files_content(self):
         """Read the content of the text files and return as a string"""
         files_content = ""
-        files_to_read = ["Stella_messages.txt", "RAID_info.txt"]
+        # files_to_read = ["Stella_messages.txt", "RAID_info.txt"]
+        files_to_read = ["RAID_info.txt"]
         
         for file_name in files_to_read:
             try:

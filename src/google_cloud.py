@@ -233,11 +233,11 @@ class GmailWorkflow:
                 # Get user name from database
                 try:
                     # Check if this is the agent's email
-                    agent_email = os.getenv("GMAIL_ADDRESS", "rasheedmohammed2006@gmail.com")
+                    agent_email = os.getenv("GMAIL_ADDRESS", "")
                     if user_email == agent_email:
                         user_name = "Rafael"
                     else:
-                        user_result = self.client.table('users').select('name').eq('email', user_email).execute()
+                        user_result = self.client.table('email_users').select('name').eq('email', user_email).execute()
                         if user_result.data:
                             user_name = user_result.data[0]['name']
                         else:
@@ -294,7 +294,7 @@ class GmailWorkflow:
                                 0: f"The user {user_email_from_threads} has replied to our initial welcome email. Their response was: '{email_body[:500]}...' Generate a follow-up email asking more about their background and interests, acknowledging their previous response.",
                                 1: f"The user {user_email_from_threads} has replied again. Their latest response was: '{email_body[:500]}...' Generate a more engaging follow-up email building on this conversation. The goal is to get to know them better.",
                                 2: f"The user {user_email_from_threads} replied with: '{email_body[:500]}...' Based on their interests shown in this conversation, generate a personalized response incorporating our club's vision and mission. The goal is to know which events they would like. Do not recommend events.",
-                                3: f"Generate a final sending message for {user_email_from_threads} based on their response: '{email_body[:500]}...'. End the conversation politely and encourage them to reach out anytime. Do not suggest events. MUST include a ending note stating specifically the conversation is now complete with the club agent Rafael."
+                                3: f"Generate a final sending message for {user_email_from_threads} based on their response: '{email_body[:500]}...'. End the conversation politely and encourage them to reach out anytime. Do not suggest events. IMPORTANT: MUST include this exact ending note at the end of the email: 'This concludes our conversation with Rafael, the club agent. Feel free to reach out anytime.'"
                             }
                             
                             prompt = base_prompts.get(current_step, f"Generate a follow-up for {user_email_from_threads}")
@@ -387,22 +387,25 @@ class GmailWorkflow:
     def workflow_manager(self, thread_id: str, step: int, incoming_message: dict = {}, message_body: str = "", message_subject: str = "", name: str = "Unknown") -> None:
         """Enhanced workflow manager that supports AI-generated responses"""
         try:            
-            if step < 3:  # Steps 0, 1, 2 send responses
+            if step <= 3:  # Changed from < 3 to <= 3 to include sending for step 3
                 # Only send reply if we have a proper AI-generated response
                 if message_body:
                     # Display Rafael's response
                     self.display_rafael_message(message_body, f"Rafael - Follow-up #{step + 1}")
 
                     self.send_reply_email(thread_id, message_body, message_body=message_body, message_subject=message_subject, name=name)
-                    self.save_workflow_state(thread_id, step=step+1, status=f'sent_followup_{step+1}')
+                    
+                    if step == 3:
+                        # For step 3, mark as completed after sending
+                        self.save_workflow_state(thread_id, step=4, status='completed')
+                        console.print(f"[green]✓ Conversation completed for thread {thread_id}...[/green]")
+                    else:
+                        self.save_workflow_state(thread_id, step=step+1, status=f'sent_followup_{step+1}')
                 else:
                     # Mark as processed but don't advance step to avoid reprocessing
                     # self.save_workflow_state(thread_id, step=step, status=f'processed_no_response_{step}')
                     console.print(f"[yellow]⚠ Skipped reply for thread {thread_id}... - No AI response available[/yellow]")
-                
-            elif step == 3:
-                self.save_workflow_state(thread_id, step=4, status='completed')
-                console.print(f"[green]✓ Conversation completed for thread {thread_id}...[/green]")
+            
 
         except Exception as e:
             console.print(f"[red]Error in workflow_manager: {e}[/red]")
