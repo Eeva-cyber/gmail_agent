@@ -40,11 +40,13 @@ IMPORTANT: Output ONLY the final email body. Do not include reasoning, drafts, c
 Formatting: You MUST use markdown formatting in your responses:
 - Use **bold** for emphasis (e.g., "I'm **Rafael**, RAID's latest agent")
 - Use *italics* for subtle emphasis (e.g., "Our *exciting* upcoming workshop")
+- ALWAYS use bullet points for lists (start EACH line with a single - followed by a space, e.g., - Item here)
 - Use bullet points for lists (start lines with -)
 - Use proper paragraphs with blank lines between them
 - Add ## for subheadings if needed
+- Ensure ALL lists are valid markdown (no extra characters, no indentation issues) so that can be converted to HTML tags
 
-Example of properly formatted response:
+Example of properly formatted response: (do NOT copy this verbatim, just use as a style guide)
 ```
 Hey there!
 
@@ -158,6 +160,8 @@ class IntegratedWorkflow:
             f"Generate only the body of the initial welcome email for new member {user_name} <{user_email}>. "
             f"Do not include the subject line. The subject will be set separately. Use a friendly, "
             f"conversational tone. You may use **bold** for important points or emphasis where appropriate."
+            f"Use bullet points (starting with -) for any lists or questions to ensure proper formatting."
+            f"Ensure all lists are in valid markdown format for HTML conversion."
         )
 
         if self.chat_app is None:
