@@ -151,13 +151,23 @@ class GmailWorkflow:
         }
         
         console.print(f"[dim]DEBUG: Starting send for {recipient} at {datetime.now()}[/dim]")
+        
+        # Add retry to handle rate limiting 
+        max_retries = 3           
         try:
-            console.print(f"[dim]DEBUG: About to call Gmail API for {recipient}[/dim]")
-            
-            sent_message = self.service.users().messages().send(
-                userId='me', body=message
-            ).execute()
-            console.print(f"[dim]DEBUG: Gmail API call succeeded for {recipient}[/dim]")
+            for attempt in range(max_retries):
+                try:
+                    sent_message = self.service.users().messages().send(userId='me', body=message).execute()
+                    console.print(f"[dim]DEBUG: Gmail API call succeeded for {recipient} on attempt {attempt+1}[/dim]")
+                    break  # Success, exit loop
+                except Exception as e:
+                    if attempt < max_retries - 1:
+                        wait_time = 2 ** attempt  # 1s, 2s, 4s
+                        console.print(f"[yellow]Gmail send failed (attempt {attempt+1}): {e}. Retrying in {wait_time}s...[/yellow]")
+                        time.sleep(wait_time)
+                    else:
+                        console.print(f"[red]Gmail send failed after {max_retries} attempts: {e}[/red]")
+                        raise
             
             thread_id = sent_message['threadId']
             self.save_workflow_state(thread_id, step=0, status='sent_initial')
