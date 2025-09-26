@@ -526,27 +526,10 @@ class GmailWorkflow:
             }
 
             # Send reply
-
-            # Add retry to handle timeouts or rate limiting
-            max_retries = 3
-            for attempt in range(max_retries):
-                try:
-                    # Send reply
-                    reply_response = self.service.users().messages().send(
-                        userId='me', body=reply_message
-                    ).execute()
-                    console.print(f"[dim]Reply sent - Thread: {thread_id[:12]}... on attempt {attempt+1}[/dim]")
-                    break  # Success, exit loop
-                except Exception as e:
-                    if attempt < max_retries - 1:
-                        wait_time = 2 ** attempt  # 1s, 2s, 4s
-                        console.print(f"[yellow]Reply send failed (attempt {attempt+1}): {e}. Retrying in {wait_time}s...[/yellow]")
-                        time.sleep(wait_time)
-                    else:
-                        console.print(f"[red]Reply send failed after {max_retries} attempts: {e}[/red]")
-                        raise
-            console.print("[green]Workflow active - Rafael monitoring for incoming emails ...[/green]")
             
+            reply_response = self.service.users().messages().send(
+                userId='me', body=reply_message
+            ).execute()          
 
             #Parse email from from_header to handle "Name <email>" format bug
             email_match = re.search(r'<([^>]+)>', from_header)
