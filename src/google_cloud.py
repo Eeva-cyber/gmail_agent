@@ -526,10 +526,6 @@ class GmailWorkflow:
             }
 
             # Send reply
-            
-            reply_response = self.service.users().messages().send(
-                userId='me', body=reply_message
-            ).execute()
 
             # Add retry to handle timeouts or rate limiting
             max_retries = 3
