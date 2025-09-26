@@ -13,6 +13,8 @@ import time
 from datetime import datetime
 from google_cloud import GmailWorkflow
 import csv
+import re
+import mistune
 
 
 # Rich imports
@@ -37,14 +39,13 @@ Subsequent Emails: Once a conversation is generated and you have a good understa
 IMPORTANT: Output ONLY the final email body. Do not include reasoning, drafts, checklists, mental sandbox, or any internal thoughts. Keep it clean and conversational.
 
 
-Formatting: You MUST use markdown formatting in your responses:
+MANDATORY FORMATTING RULES (Follow These Exactly for Proper HTML Conversion):
 - Use **bold** for emphasis (e.g., "I'm **Rafael**, RAID's latest agent")
 - Use *italics* for subtle emphasis (e.g., "Our *exciting* upcoming workshop")
-- ALWAYS use bullet points for lists (start EACH line with a single - followed by a space, e.g., - Item here)
-- Use bullet points for lists (start lines with -)
+- Use bullet points SPARINGLY for lists ONLY when it improves clarity (e.g., for multiple options or questions). Start EACH bullet on a NEW LINE with a single - followed by a space (e.g., - Item here). Avoid bullet points for simple lists or single items.
 - Use proper paragraphs with blank lines between them
 - Add ## for subheadings if needed
-- Ensure ALL lists are valid markdown (no extra characters, no indentation issues) so that can be converted to HTML tags
+- Ensure ALL lists are valid markdown: No extra characters, no indentation issues, and each item on its own line. This ensures they convert to HTML <ul><li> tags correctly.
 
 Example of properly formatted response: (do NOT copy this verbatim, just use as a style guide)
 ```
@@ -69,6 +70,29 @@ root_dir = pathlib.Path(__file__).parent.parent
 dotenv.load_dotenv(root_dir / ".env")
 
 class IntegratedWorkflow:
+    
+    def fix_inline_bullets(self, text: str) -> str:
+        """Robustly convert any list-like text to strict markdown bullets."""
+        import re
+        lines = text.split('\n')
+        new_lines = []
+        
+        for line in lines:
+            # Check if line has multiple dashes or starts with text followed by dash
+            if re.search(r'\w.*-\s+\w', line) and '- ' in line:
+                # Split on dashes, assuming the first part is intro
+                parts = re.split(r'\s*-\s+', line)
+                intro = parts[0].strip().rstrip(':').strip()  # Remove trailing colon
+                bullets = [p.strip() for p in parts[1:] if p.strip()]
+                if intro:
+                    new_lines.append(intro)
+                for bullet in bullets:
+                    new_lines.append(f'- {bullet}')
+            else:
+                new_lines.append(line)
+        
+        return '\n'.join(new_lines)
+    
     def format_email_body(self, raw_body: str) -> str:
         """
         Post-processes the LLM output to format the email body with HTML tags for greeting, paragraphs, and signature.
@@ -84,14 +108,20 @@ class IntegratedWorkflow:
             
         # print(f"DEBUG - Before markdown conversion: {cleaned}")
         
+        # Pre-process inline dashes to proper markdown lists
+        cleaned = self.fix_inline_bullets(cleaned)
         try:
             # Convert markdown to HTML
-            html_body = markdown.markdown(
-                cleaned,
-                output_format='html',
-                extensions=['extra', 'smarty']
-            )
-            # print(f"DEBUG - Successfully converted to HTML: {html_body}")
+            # html_body = markdown.markdown(
+            #     cleaned,
+            #     output_format='html',
+            #     extensions=['extra', 'smarty']
+            # )
+            
+            renderer = mistune.HTMLRenderer()
+            markdown_parser = mistune.Markdown(renderer)
+            html_body = markdown_parser(cleaned)
+            print(f"DEBUG - Successfully converted to HTML: {html_body}")
             
             # Wrap in proper HTML structure
             html_output = f"""
@@ -161,8 +191,7 @@ class IntegratedWorkflow:
             f"Do not include the subject line. The subject will be set separately. Use a friendly, "
             f"conversational tone. You may use **bold** for important points or emphasis where appropriate."
             f"Use bullet points (starting with -) for any lists or questions to ensure proper formatting."
-            f"Ensure all lists are in valid markdown format for HTML conversion."
-        )
+            )
 
         if self.chat_app is None:
             console.print("[red]✗ [/red] ChatApplication not initialized")

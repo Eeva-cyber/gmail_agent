@@ -1,5 +1,6 @@
 import base64
-import markdown
+# import markdown
+import mistune
 import json
 import os
 import time
@@ -426,6 +427,28 @@ class GmailWorkflow:
 
         except Exception as e:
             console.print(f"[red]Error in workflow_manager: {e}[/red]")
+            
+    def fix_inline_bullets(self, text: str) -> str:
+        """Robustly convert any list-like text to strict markdown bullets."""
+        import re
+        lines = text.split('\n')
+        new_lines = []
+        
+        for line in lines:
+            # Check if line has multiple dashes or starts with text followed by dash
+            if re.search(r'\w.*-\s+\w', line) and '- ' in line:
+                # Split on dashes, assuming the first part is intro
+                parts = re.split(r'\s*-\s+', line)
+                intro = parts[0].strip().rstrip(':').strip()  # Remove trailing colon
+                bullets = [p.strip() for p in parts[1:] if p.strip()]
+                if intro:
+                    new_lines.append(intro)
+                for bullet in bullets:
+                    new_lines.append(f'- {bullet}')
+            else:
+                new_lines.append(line)
+        
+        return '\n'.join(new_lines)
 
     def send_reply_email(self, thread_id: str, body: str, message_body: str = "", message_subject: str = "", name: str = "Unknown") -> None:
         """Send reply in existing thread using HTML formatting"""
@@ -466,13 +489,19 @@ class GmailWorkflow:
 
             # Use custom body
             email_body = message_body or body
+            
+            # Pre-process inline dashes to proper markdown lists 
+            email_body = self.fix_inline_bullets(email_body)
 
             # Convert markdown to HTML
-            html_content = markdown.markdown(
-                email_body.strip(),
-                output_format='html',
-                extensions=['extra', 'smarty']
-            )
+            # html_content = markdown.markdown(
+            #     email_body.strip(),
+            #     output_format='html',
+            #     extensions=['extra', 'smarty']
+            # )
+            renderer = mistune.HTMLRenderer()
+            markdown_parser = mistune.Markdown(renderer)
+            html_content = markdown_parser(email_body.strip())
 
             # Wrap in div for consistent style and full HTML structure
             html_body = f"""
